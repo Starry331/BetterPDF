@@ -1,0 +1,35 @@
+{
+  "name": "bpdf",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "bundle": "npm run release:check && tauri build",
+    "prepare:runtime": "python3 scripts/bundle-runtime.py",
+    "test:engine": "node tests/engine.integration.mjs",
+    "release:check": "python3 scripts/release-check.py",
+    "bundle:dev": "python3 scripts/build-dev.py",
+    "test:ui": "node --test tests/work-queue.test.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "@tauri-apps/plugin-opener": "^2.5.0",
+    "lucide-svelte": "^0.468.0",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.1.0",
+    "@tauri-apps/cli": "^2.11.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.1.0"
+  }
+}

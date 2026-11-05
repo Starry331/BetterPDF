@@ -1,0 +1,48 @@
+<script lang="ts">
+ import {untrack,onDestroy} from 'svelte';
+ import {open,save} from '@tauri-apps/plugin-dialog';
+ import {X,Plus,ArrowUp,ArrowDown,FileText,Eye,ArrowRight,FolderOpen,LockKeyhole,LoaderCircle} from 'lucide-svelte';
+ import type {Tool,Language} from './types';import {api,native} from './api';
+ let {tool,lang,initial=[],onclose,onsubmit,onerror}:{tool:Tool;lang:Language;initial?:string[];onclose:()=>void;onsubmit:()=>void;onerror:(s:string)=>void}=$props();
+ const t=(zh:string,en:string)=>lang==='zh'?zh:en;
+ let files=$state<string[]>(untrack(()=>[...initial]));let options=$state<Record<string,any>>({pages:'',angle:90,width:595,height:842,left:20,top:20,right:20,bottom:20,chunk:1,dpi:144,text:'',watermarkText:'',size:32,opacity:.25,password:'',newPassword:'',quality:'lossless',language:'chi_sim+chi_tra+eng',colorMode:'gray'});
+ let busy=$state(false);let preview=$state<{pages:number;selected:number;message:string;image?:string}|null>(null);let previewError=$state('');let localError=$state('');let folderName=$state(untrack(()=>'BPDF-'+tool.id));let showPassword=$state(false);
+ const signature=$derived(JSON.stringify([tool.id,files,options]));let generation=0;
+ $effect(()=>{signature;untrack(()=>{preview=null;previewError='';generation++;});});
+ onDestroy(()=>{generation++;});
+ const fields=$derived(tool.fields||[]);const folderOutput=$derived(tool.ext==='folder'||(files.length>1&&!['merge','images_pdf'].includes(tool.id)));
+ async function choose(){if(!native){localError=t('请在桌面应用中打开本地文件。','Open local files in the desktop application.');return;}const result=await open({multiple:tool.multiple||tool.id==='merge',filters:[{name:t('支持的文件','Supported files'),extensions:tool.input||['pdf']}]});if(result){const selected=Array.isArray(result)?result:[result];files=tool.multiple?[...files,...selected]:selected;preview=null;}}
+ function move(i:number,d:number){const a=[...files];[a[i],a[i+d]]=[a[i+d],a[i]];files=a;preview=null;}
+ async function inspect(){if(busy)return;busy=true;previewError='';const key=signature;const request=++generation;try{const result=await api.preview(tool.id,[...files],$state.snapshot(options));if(request===generation&&key===signature)preview=result;}catch(e){if(request===generation&&key===signature)previewError=String(e);}finally{busy=false;}}
+ async function execute(){localError='';if(!files.length)return;busy=true;try{let output:string|null=null;if(folderOutput){const dir=await open({directory:true,multiple:false});if(typeof dir==='string'){if(!folderName.trim()||/[\\/:]/.test(folderName))throw new Error(t('请输入有效的结果文件夹名称。','Enter a valid result folder name.'));output=dir+'/'+folderName;}}else{const stem=files[0].split(/[\\/]/).pop()?.replace(/\.[^.]+$/,'')||'document';output=await save({defaultPath:stem+'-'+tool.id+'.'+tool.ext,filters:[{name:tool.ext.toUpperCase(),extensions:[tool.ext]}]});}if(output){await api.submit(tool.id,files,output,$state.snapshot(options));onsubmit();onclose();}}catch(e){localError=String(e);}finally{busy=false;}}
+ const labels:Record<string,[string,string]>={pages:['页面范围','Page range'],width:['页面宽度（pt）','Width (pt)'],height:['页面高度（pt）','Height (pt)'],left:['左边距（pt）','Left (pt)'],top:['上边距（pt）','Top (pt)'],right:['右边距（pt）','Right (pt)'],bottom:['下边距（pt）','Bottom (pt)'],chunk:['每个文件的页数','Pages per file'],dpi:['分辨率（DPI）','Resolution (DPI)'],size:['字号（pt）','Font size (pt)'],opacity:['不透明度','Opacity']};
+</script>
+<div class="modal-backdrop" role="presentation">
+ <div class="tool-dialog" role="dialog" aria-modal="true" aria-label={tool[lang==='zh'?'zh':'en']}>
+  <header class="dialog-head"><div><span class="eyebrow">BPDF / {t('本地工具','LOCAL TOOL')}</span><h2>{tool[lang==='zh'?'zh':'en']}</h2><p>{tool[lang==='zh'?'desc':'descEn']}</p></div><button class="icon-button" title={t('关闭','Close')} onclick={onclose}><X size={20}/></button></header>
+  <div class="dialog-body"><div class="tool-options">
+   <div class="field-heading"><span>{t('输入文件','Input files')} <small>{files.length||''}</small></span><button class="text-button" onclick={choose}><Plus size={15}/>{t('选择文件','Add files')}</button></div>
+   {#if files.length}<div class="input-files">{#each files as file,i}<div class="input-file"><FileText size={17}/><span title={file}>{file.split(/[\\/]/).pop()}</span>{#if files.length>1}<button class="icon-button tiny" disabled={i===0} title={t('上移','Move up')} onclick={()=>move(i,-1)}><ArrowUp size={13}/></button><button class="icon-button tiny" disabled={i===files.length-1} title={t('下移','Move down')} onclick={()=>move(i,1)}><ArrowDown size={13}/></button>{/if}<button class="icon-button tiny" title={t('移除','Remove')} onclick={()=>{files=files.filter((_,j)=>j!==i);preview=null;}}><X size={13}/></button></div>{/each}</div>{:else}<button class="empty-input" onclick={choose}><Plus size={23}/><span>{t('选择要处理的文件','Choose files to get started')}</span><small>{tool.input?.map(e=>e.toUpperCase()).join(' · ')}</small></button>{/if}
+   <div class="option-grid">
+    {#each fields as field}
+     {#if field==='pages'}<label class="wide">{t(...labels.pages)}<input bind:value={options.pages} placeholder={t('全部页面，或 1-5,8,12-10','All pages, or 1-5,8,12-10')} oninput={()=>preview=null}/></label>
+     {:else if ['width','height','left','top','right','bottom','chunk','dpi','size','opacity'].includes(field)}<label>{t(...labels[field])}<input type="number" min={field==='opacity'?0:field==='chunk'?1:0} max={field==='opacity'?1:field==='dpi'?(tool.id==='ocr'?288:600):14400} step={field==='opacity'?0.05:1} bind:value={options[field]} oninput={()=>preview=null}/></label>
+     {:else if field==='angle'}<label class="wide">{t('旋转角度','Rotation')}<select bind:value={options.angle}><option value={90}>90° ↻</option><option value={180}>180°</option><option value={270}>90° ↺</option></select></label>
+     {:else if field==='text'||field==='watermarkText'}<label class="wide">{t(field==='text'?'水印文字':'精确匹配的独立水印文字',field==='text'?'Watermark text':'Exact independent watermark text')}<input bind:value={options[field]} oninput={()=>preview=null}/></label>
+     {:else if field==='newPassword'}<label class="wide">{t('新打开密码','New opening password')}<input type="password" bind:value={options.newPassword} autocomplete="new-password"/></label>
+     {:else if field==='quality'}<label class="wide">{t('压缩方式','Compression')}<select bind:value={options.quality}><option value="lossless">{t('无损 · 保留内容质量','Lossless · preserve quality')}</option><option value="balanced">{t('均衡 · 适合屏幕阅读','Balanced · for screen reading')}</option><option value="screen">{t('最小体积 · 降低图片质量','Smallest · lower image quality')}</option><option value="print">{t('打印 · 较高图片质量','Print · higher image quality')}</option></select></label>
+     {:else if field==='language'}<label class="wide">{t('识别语言','OCR languages')}<select bind:value={options.language}><option value="chi_sim+chi_tra+eng">{t('简体中文 + 繁体中文 + 英文','Simplified + Traditional Chinese + English')}</option><option value="chi_sim+eng">{t('简体中文 + 英文','Simplified Chinese + English')}</option><option value="chi_tra+eng">{t('繁体中文 + 英文','Traditional Chinese + English')}</option><option value="eng">English</option></select></label>
+     {:else if field==='colorMode'}<label class="wide">{t('颜色模式','Color mode')}<select bind:value={options.colorMode}><option value="gray">{t('灰度','Grayscale')}</option><option value="mono">{t('纯黑白','Monochrome')}</option></select></label>{/if}
+    {/each}
+   </div>
+   <button class="text-button password-toggle" onclick={()=>showPassword=!showPassword}><LockKeyhole size={14}/>{t('原文档有密码？','Is the source password protected?')}</button>
+   {#if showPassword}<label>{t('原文档打开密码','Source opening password')}<input type="password" bind:value={options.password} autocomplete="off"/></label>{/if}
+   {#if folderOutput}<label>{t('结果文件夹名称','Result folder name')}<input bind:value={folderName}/></label>{/if}
+   {#if ['to_docx','to_pptx','to_xlsx','to_epub'].includes(tool.id)}<p class="hint">{t('优先保留可编辑内容。扫描件请先识别文字，复杂布局请检查转换结果。','Editable content comes first. Run OCR on scans; review complex layouts after conversion.')}</p>{/if}
+   {#if tool.id==='remove_watermark'}<p class="hint">{t('仅移除独立的匹配文字。扫描图中的水印无法无损删除；请先查看预览。','Only matching independent text is removed. Watermarks baked into scans cannot be removed losslessly. Preview first.')}</p>{/if}
+   {#if tool.id==='caj_pdf'}<p class="hint">{t('支持标准 CAJ 的 PDF 数据恢复及单页 JPEG 型 HN。其他编码会明确报错。','Supports standard CAJ PDF recovery and single-JPEG-page HN. Other encodings are rejected explicitly.')}</p>{/if}
+   {#if localError}<p class="error-message">{localError}</p>{/if}
+  </div><div class="preview-panel"><div class="field-heading"><span>{t('预览','Preview')}</span><button class="text-button" disabled={!files.length||busy} onclick={inspect}><Eye size={15}/>{t('生成预览','Preview')}</button></div>{#if preview?.image}<img src={preview.image} alt={t('处理预览','Processing preview')}/><p>{t('选定','Selected')} {preview.selected} / {preview.pages} {t('页','pages')}</p>{:else}<div class="preview-empty"><FileText size={44} strokeWidth={1}/><p>{t('先选文件，再查看预览','Choose files, then preview')}</p><small>{t('原文件始终保留','Your originals stay intact')}</small></div>{/if}{#if previewError}<p class="error-message">{previewError}</p>{/if}</div></div>
+  <footer class="dialog-footer"><span><LockKeyhole size={13}/>{t('全部在这台电脑上完成','Processed entirely on this computer')}</span><button class="primary" disabled={!files.length||busy} onclick={execute}>{#if busy}<LoaderCircle size={16} class="spin"/>{:else}<FolderOpen size={16}/>{/if}{t('选择保存位置并开始','Choose destination & start')}<ArrowRight size={16}/></button></footer>
+ </div>
+</div>
