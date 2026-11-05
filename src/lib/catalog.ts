@@ -33,7 +33,7 @@ const entries: [string,string,string,string,string,string,string,string[]?,boole
  ['file_pdf','to','文件转 PDF','Files to PDF','Office、图片、文本与电子书','Office, images, text and ebooks','pdf',[],true,['pdf','doc','docx','ppt','pptx','xls','xlsx','png','jpg','jpeg','tif','tiff','bmp','webp','txt','md','html','htm','epub','caj']],
  ['compress','optimize','压缩 PDF','Compress PDF','减少文件体积，预览压缩结果','Reduce size with a quality preset','pdf',['quality']],
  ['repair','optimize','修复 PDF','Repair PDF','恢复可修复的文档结构','Recover repairable document structure','pdf'],
- ['ocr','optimize','识别文字 · OCR','Searchable PDF','为扫描件添加可搜索文字','Add searchable text to scanned pages','pdf',['language','dpi']],
+ ['ocr','optimize','识别文字 · OCR','Searchable PDF','为扫描件添加可搜索文字','Add searchable text to scanned pages','pdf',['language','dpi','autoRotate']],
  ['grayscale','optimize','PDF 转黑白','Black & white','转换为灰度或纯黑白页面','Convert to grayscale or monochrome','pdf',['colorMode','dpi']],
  ['watermark','protect','添加水印','Add watermark','为页面添加文字水印','Apply a text watermark','pdf',['pages','text','size','opacity']],
  ['remove_watermark','protect','移除水印','Remove watermark','定位并移除独立水印对象','Locate and remove independent watermarks','pdf',['pages','watermarkText']],

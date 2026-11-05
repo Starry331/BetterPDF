@@ -16,7 +16,7 @@
     "test:engine": "node tests/engine.integration.mjs",
     "release:check": "python3 scripts/release-check.py",
     "bundle:dev": "python3 scripts/build-dev.py",
-    "test:ui": "node --test tests/work-queue.test.mjs"
+    "test:ui": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",

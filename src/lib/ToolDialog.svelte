@@ -5,7 +5,7 @@
  import type {Tool,Language} from './types';import {api,native} from './api';
  let {tool,lang,initial=[],onclose,onsubmit,onerror}:{tool:Tool;lang:Language;initial?:string[];onclose:()=>void;onsubmit:()=>void;onerror:(s:string)=>void}=$props();
  const t=(zh:string,en:string)=>lang==='zh'?zh:en;
- let files=$state<string[]>(untrack(()=>[...initial]));let options=$state<Record<string,any>>({pages:'',angle:90,width:595,height:842,left:20,top:20,right:20,bottom:20,chunk:1,dpi:144,text:'',watermarkText:'',size:32,opacity:.25,password:'',newPassword:'',quality:'lossless',language:'chi_sim+chi_tra+eng',colorMode:'gray'});
+ let files=$state<string[]>(untrack(()=>[...initial]));let options=$state<Record<string,any>>({pages:'',angle:90,width:595,height:842,left:20,top:20,right:20,bottom:20,chunk:1,dpi:144,text:'',watermarkText:'',size:32,opacity:.25,password:'',newPassword:'',quality:'lossless',language:'chi_sim+chi_tra+eng',colorMode:'gray',autoRotate:true});
  let busy=$state(false);let preview=$state<{pages:number;selected:number;message:string;image?:string}|null>(null);let previewError=$state('');let localError=$state('');let folderName=$state(untrack(()=>'BPDF-'+tool.id));let showPassword=$state(false);
  const signature=$derived(JSON.stringify([tool.id,files,options]));let generation=0;
  $effect(()=>{signature;untrack(()=>{preview=null;previewError='';generation++;});});
@@ -27,6 +27,7 @@
     {#each fields as field}
      {#if field==='pages'}<label class="wide">{t(...labels.pages)}<input bind:value={options.pages} placeholder={t('全部页面，或 1-5,8,12-10','All pages, or 1-5,8,12-10')} oninput={()=>preview=null}/></label>
      {:else if ['width','height','left','top','right','bottom','chunk','dpi','size','opacity'].includes(field)}<label>{t(...labels[field])}<input type="number" min={field==='opacity'?0:field==='chunk'?1:0} max={field==='opacity'?1:field==='dpi'?(tool.id==='ocr'?288:600):14400} step={field==='opacity'?0.05:1} bind:value={options[field]} oninput={()=>preview=null}/></label>
+     {:else if field==='autoRotate'}<label class="wide"><span><input type="checkbox" bind:checked={options.autoRotate}/> {t('自动纠正扫描页方向','Auto-correct scanned page orientation')}</span><small>{t('无法可靠判断时保留原方向并提示。','Keeps the original direction and reports uncertain pages.')}</small></label>
      {:else if field==='angle'}<label class="wide">{t('旋转角度','Rotation')}<select bind:value={options.angle}><option value={90}>90° ↻</option><option value={180}>180°</option><option value={270}>90° ↺</option></select></label>
      {:else if field==='text'||field==='watermarkText'}<label class="wide">{t(field==='text'?'水印文字':'精确匹配的独立水印文字',field==='text'?'Watermark text':'Exact independent watermark text')}<input bind:value={options[field]} oninput={()=>preview=null}/></label>
      {:else if field==='newPassword'}<label class="wide">{t('新打开密码','New opening password')}<input type="password" bind:value={options.newPassword} autocomplete="new-password"/></label>

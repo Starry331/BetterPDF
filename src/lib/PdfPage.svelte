@@ -5,7 +5,7 @@
  let {doc,page,scale=1,mode='read',thumbnail=false,onselect,onvisible,onerror}:{doc:DocumentSession;page:number;scale?:number;mode?:string;thumbnail?:boolean;onselect?:(e:Record<string,unknown>)=>void;onvisible?:(page:number)=>void;onerror?:(s:string)=>void}=$props();
  let element:HTMLDivElement;let visible=$state(false);let image=$state('');let data=$state<PageData|null>(null);let loading=$state(false);let error=$state('');let points=$state<number[][]>([]);let drawing=false;let sequence=0;
  const box=$derived(doc.bounds[page]||[0,0,595,842]);const width=$derived((box[2]-box[0])*scale);const height=$derived((box[3]-box[1])*scale);
- onMount(()=>{const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;},{rootMargin:thumbnail?'100px':'250px'});observer.observe(element);const current=new IntersectionObserver(entries=>{if(entries[0].isIntersecting&&!thumbnail)onvisible?.(page);},{threshold:.35});if(!thumbnail)current.observe(element);return()=>{observer.disconnect();current.disconnect();sequence++;};});
+ onMount(()=>{const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;},{rootMargin:thumbnail?'100px':'250px'});observer.observe(element);return()=>{observer.disconnect();sequence++;};});
  $effect(()=>{const id=doc.id,rev=doc.revision,zoom=scale,show=visible;const token=++sequence;const controller=new AbortController();if(!show){image='';loading=false;return;}image='';loading=true;error='';const timer=setTimeout(()=>{api.render(id,page,Math.min(4,zoom*(thumbnail?1:window.devicePixelRatio||1)),controller.signal,thumbnail).then(src=>{if(sequence===token)image=src;}).catch(e=>{if(sequence===token&&e?.name!=='AbortError')error=String(e);}).finally(()=>{if(sequence===token)loading=false;});},70);return()=>{clearTimeout(timer);controller.abort();sequence++;};});
  $effect(()=>{const id=doc.id,rev=doc.revision,show=visible;let stale=false;const controller=new AbortController();if(!show||thumbnail){data=null;return;}data=null;api.page(id,page,rev,controller.signal).then(p=>{if(!stale)data=p;}).catch(e=>{if(!stale&&e?.name!=='AbortError')error=String(e);});return()=>{stale=true;controller.abort();};});
  function relative(e:PointerEvent):number[]{const r=element.getBoundingClientRect();return [(e.clientX-r.left)/scale+box[0],(e.clientY-r.top)/scale+box[1]];}
@@ -18,7 +18,7 @@
 </script>
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div bind:this={element} class="pdf-page" class:thumbnail class:inking={mode==='ink'||mode==='note'} style:width="{width}px" style:height="{height}px" data-page={page} onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up} ondblclick={addText}>
- {#if image}<img class="page-image" src={image} alt="Page {page+1}" draggable="false" />{/if}
+ {#if image}<img class="page-image" src={image} alt="Page {page+1}" draggable="false" decoding="async" />{/if}
  {#if loading&&!image}<div class="page-loading"><span class="spinner"></span></div>{/if}
  {#if error}<div class="page-error">{error}</div>{/if}
  {#if data&&!thumbnail}

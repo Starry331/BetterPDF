@@ -1,5 +1,9 @@
 # Better PDF
 
+**[下载安装包（GitHub Releases）](https://github.com/Starry331/BetterPDF/releases)** · [当前开发预览版](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.2)
+
+当前 DMG 适用于 **macOS 27.2+ / Apple Silicon**，尚未经过 Developer ID 签名公证。macOS 14 兼容构建和 Windows 安装包仍在开发。
+
 本地 PDF 阅读、编辑与转换桌面应用。Tauri 2 / Svelte 5 / TypeScript / Rust，原生 MuPDF 渲染，AGPL-3.0-only。
 
 **当前是开发版本，尚未达到完整首版发布标准。** 34 个工具已接入实际处理流程，并在本机生成和检查输出；这不等于所有格式、排版、损坏文件和平台均已验收。详见 [当前验证状态](docs/STATUS.md)。
