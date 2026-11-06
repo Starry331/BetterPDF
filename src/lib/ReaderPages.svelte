@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {motion} from './motion';
  import {rowAt,visibleRange} from './viewport';
  import PdfPage from './PdfPage.svelte';import type {DocumentSession} from './types';
  let {doc,scale,mode,view,page,viewport,onselect,onvisible,onerror}:{doc:DocumentSession;scale:number;mode:string;view:string;page:number;viewport?:HTMLDivElement;onselect:(e:Record<string,unknown>)=>void;onvisible:(p:number)=>void;onerror:(s:string)=>void}=$props();
@@ -19,7 +20,7 @@
  export function jump(index:number){const row=layout.rows[Math.floor(index/(view==='spread'?2:1))];if(viewport&&row)viewport.scrollTop=view==='single'?0:row.y;}
 </script>
 {#if view==='single'}
- <div class="reader-page-wrap" data-reader-page={page}><PdfPage {doc} {page} {scale} {mode} {onselect} {onerror}/></div>
+ <div class="reader-page-wrap" data-reader-page={page} use:motion={{key:page,kind:'document'}}><PdfPage {doc} {page} {scale} {mode} {onselect} {onerror}/></div>
 {:else}
  <div class="virtual-pages" style:height="{layout.height}px" style:width="{layout.width}px">
  {#each visibleRows as row (row.start)}<div class="virtual-row" style:top="{row.y}px" style:height="{row.height}px">

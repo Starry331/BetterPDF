@@ -16,3 +16,30 @@
 
 /* Keep native macOS controls inside the navigation rail, away from file tabs. */
 .app-shell.mac .rail{width:88px;min-width:88px;padding-top:52px}.app-shell.mac .document-tabs{padding-left:12px}.app-shell.mac .window-drag-handle{left:88px;height:44px}
+
+/* Short compositor-only entrance; document scrolling never receives an animation. */
+.home-heading h1{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:clamp(38px,4.4vw,62px);font-weight:650;letter-spacing:-.055em;line-height:1.08;margin-bottom:12px}.home-heading p{font-size:clamp(16px,1.5vw,20px);letter-spacing:-.02em;font-weight:400;color:var(--secondary)}.home-heading{margin-bottom:32px}.home-page{padding-top:clamp(48px,7vh,76px)}.home-heading,.open-zone{animation:quiet-enter 160ms ease-out both}.quick-card,.tool-card,.rail-button{transition:background-color 110ms,border-color 110ms,transform 110ms}.quick-card:hover{transform:translateY(-1px)}.shortcut-row{display:flex;justify-content:space-between;gap:16px;font-size:12px;padding:8px 0;border-bottom:1px solid var(--line)}.shortcut-row kbd{white-space:nowrap;color:var(--secondary)}
+@keyframes quiet-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.home-heading,.open-zone,.compact-dialog{animation:none}.quick-card:hover,.tool-card:hover{transform:none}}
+
+/* Cover frequent controls without animating layout, page scroll or rendering. */
+.icon-button,.text-button,.primary,.secondary,.filter-chips button,.theme-options button,.document-tab,.mode-buttons button{transition:background-color 110ms,color 110ms,border-color 110ms,opacity 110ms,transform 100ms}.icon-button:active:not(:disabled),.primary:active:not(:disabled),.secondary:active:not(:disabled){transform:scale(.97)}.document-tab.current{animation:tab-selected 130ms ease-out}.card-arrow{transition:opacity 110ms,transform 110ms;transform:translate(-2px,2px)}.quick-card:hover .card-arrow{transform:translate(0,0)}
+@keyframes tab-selected{from{opacity:.65;transform:translateY(2px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.document-tab.current{animation:none}.icon-button:active,.primary:active,.secondary:active{transform:none}}
+
+.edit-preview{margin:0}.edit-preview img{display:block;width:100%;max-height:280px;object-fit:contain;background:var(--soft);border-radius:5px}.edit-preview figcaption{font-size:10px;color:var(--muted);line-height:1.5;margin-top:6px}
+/* Full-screen navigation is an edge dock, never a second sidebar. */
+.app-shell.fullscreen .rail{position:fixed;left:0;top:50%;bottom:auto;height:auto;width:52px;padding:8px 4px;gap:4px;transform:translate(-44px,-50%);opacity:0;z-index:30;border:0;border-radius:0 12px 12px 0;background:var(--surface);box-shadow:0 4px 24px #0002;transition:transform 140ms ease-out,opacity 110ms ease-out}
+.app-shell.fullscreen .rail:hover,.app-shell.fullscreen .rail:focus-within{transform:translate(0,-50%);opacity:1}
+.app-shell.fullscreen .rail .rail-button{width:44px;height:40px;padding:8px;min-height:40px}
+.app-shell.fullscreen .rail .rail-button>span,.app-shell.fullscreen .rail-separator{display:none}
+.app-shell.fullscreen .rail-bottom{margin:0}.fullscreen .document-tabs{padding-left:12px!important}.fullscreen .window-drag-handle{display:none}
+.document-sidebar{position:relative;max-width:45vw}.pane-resizer{position:absolute;right:-4px;top:0;bottom:0;width:8px;z-index:5;cursor:col-resize;touch-action:none}.pane-resizer:hover,.pane-resizer:focus-visible{background:var(--blue);opacity:.45}
+.text-glyph{position:absolute;color:transparent;white-space:pre;user-select:text;pointer-events:auto;cursor:text;line-height:1;transform-origin:0 0}.text-glyph::selection{background:#e4b42c66;color:transparent}
+@media(prefers-reduced-motion:reduce){.app-shell.fullscreen .rail{transition:none}}
+.fullscreen-edge{position:fixed;left:0;top:0;bottom:0;width:7px;z-index:29}.app-shell.fullscreen .rail{min-width:52px}.fullscreen-edge:hover~.rail{transform:translate(0,-50%);opacity:1}.app-shell.fullscreen .rail-bottom{padding:0}.app-shell.fullscreen .rail .rail-button{animation:edge-button-in 150ms ease-out both}.app-shell.fullscreen .rail .rail-button:nth-child(2){animation-delay:12ms}.app-shell.fullscreen .rail .rail-button:nth-child(3){animation-delay:24ms}
+@keyframes edge-button-in{from{opacity:0;translate:-5px 0}to{opacity:1;translate:0 0}}
+@media(prefers-reduced-motion:reduce){.app-shell.fullscreen .rail .rail-button{animation:none}}
+.app-shell.fullscreen .rail{background:transparent;box-shadow:none}.app-shell.fullscreen .rail .rail-button{background:var(--surface);box-shadow:0 2px 12px #0002}.app-shell.fullscreen .rail .rail-button:hover,.app-shell.fullscreen .rail .rail-button.active{background:var(--blue-soft);color:var(--blue)}
+/* Auto margins center small pages without making oversized pages' left edge unreachable. */
+.page-viewport{align-items:flex-start}.page-viewport>.virtual-pages,.page-viewport>.reader-page-wrap{margin-left:auto;margin-right:auto}

@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {motion,surfaceTransition} from './motion';
  import {onMount} from 'svelte';import {invoke} from '@tauri-apps/api/core';
  import {X,Users,LoaderCircle} from 'lucide-svelte';import type {DocumentSession,Language} from './types';
  let {lang,draft,document,room,onclose,onjoined,onleave,onretry}:{lang:Language;draft:{address:string;code:string;initialized:boolean};document?:DocumentSession;room?:{role:string;invitation?:string;error?:string;lastSync?:number;syncing?:boolean};onclose:()=>void;onjoined:(v:{document:DocumentSession;role:string;invitation?:string})=>void;onleave:()=>void;onretry:()=>void}=$props();
@@ -7,7 +8,7 @@
  async function connect(host:boolean){busy=true;error='';try{const result=await invoke<{document:DocumentSession;role:string;invitation?:string}>(host?'collaboration_host':'collaboration_join',host?{id:document?.id,address:draft.address}:{invitation:draft.code});onjoined(result);}catch(e){error=String(e);}finally{busy=false;}}
 </script>
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="modal-backdrop" onpointerdown={e=>{if(e.button===0&&e.target===e.currentTarget&&!busy)onclose();}} onkeydown={e=>{if(e.key==='Escape'&&!busy){e.stopPropagation();onclose();}}}><div class="compact-dialog collaboration-dialog" role="dialog" aria-modal="true" aria-label={t('局域网协作','LAN collaboration')}><div class="field-heading"><strong><Users size={18}/> {t('局域网协作','LAN collaboration')}</strong><button class="icon-button" onclick={onclose} disabled={busy} aria-label={t('关闭','Close')}><X size={18}/></button></div>
+<div class="modal-backdrop" use:motion={{kind:'backdrop'}} onpointerdown={e=>{if(e.button===0&&e.target===e.currentTarget&&!busy)onclose();}} onkeydown={e=>{if(e.key==='Escape'&&!busy){e.stopPropagation();onclose();}}}><div class="compact-dialog collaboration-dialog" in:surfaceTransition={{kind:'dialog'}} out:surfaceTransition={{kind:'dialog',exit:true}} role="dialog" aria-modal="true" aria-label={t('局域网协作','LAN collaboration')}><div class="field-heading"><strong><Users size={18}/> {t('局域网协作','LAN collaboration')}</strong><button class="icon-button" onclick={onclose} disabled={busy} aria-label={t('关闭','Close')}><X size={18}/></button></div>
 {#if room}
  <p>{t(room.role==='host'?'你正在主持这份共享副本。将邀请码交给同一局域网中的同事。':'已加入共享文档，修改由主持端统一提交。',room.role==='host'?'Hosting a shared copy. Give the invitation to colleagues on your LAN.':'Joined a shared document. The host serializes edits.')}</p>
  {#if room.invitation}<label>{t('邀请码（包含访问凭证）','Invitation (contains access credentials)')}<textarea readonly rows="5" value={room.invitation} onfocus={e=>e.currentTarget.select()}></textarea></label><button class="text-button" onclick={async()=>{try{await navigator.clipboard.writeText(room?.invitation||'');error='';}catch{error=t('请选中邀请码后复制。','Select the invitation and copy it.');}}}>{t('复制邀请码','Copy invitation')}</button>{/if}

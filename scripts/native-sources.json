@@ -1,0 +1,7 @@
+[
+  {"archive":"mupdf-1.28.6-source.tar.gz","directory":"mupdf-1.28.6-source","url":"https://mupdf.com/downloads/archive/mupdf-1.28.6-source.tar.gz","sha256":"dc85000640a45d90ca9b77b061f6ca67cce0c4d4fbecf8819647baf573eef101"},
+  {"archive":"qpdf-12.4.2.tar.gz","directory":"qpdf-12.4.2","url":"https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2.tar.gz","sha256":"8a58af5b6141319287c1883bec8bd1bd545b7567b7fc5e6ce5d25a1c85f36397"},
+  {"archive":"ghostpdl-10.08.0.tar.xz","directory":"ghostpdl-10.08.0","url":"https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10080/ghostpdl-10.08.0.tar.xz","sha256":"94943e3c4adb7115d132b3c28b913672f2e62e6a9d802f7e754e716b1634174a"},
+  {"archive":"5.5.4.tar.gz","directory":"tesseract-5.5.4","url":"https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.5.4.tar.gz","sha256":"a8dbf8b8c8ee427ff6ad1d99116502feaf59440af1adb893caf60a6576826cf4"},
+  {"archive":"leptonica-1.87.0.tar.gz","directory":"leptonica-1.87.0","url":"https://github.com/DanBloomberg/leptonica/releases/download/1.87.0/leptonica-1.87.0.tar.gz","sha256":"c73363397f96eb1295602bf44d708a994ad42046c791bf03ea0505d829bdb6a7"}
+]

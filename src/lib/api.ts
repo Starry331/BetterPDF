@@ -21,6 +21,7 @@ export const api = {
  render:renderPage,
  page:pageData,
  search:(id:string,query:string)=>invoke<SearchHit[]>('search_document',{id,query}),
+ previewEdit:(id:string,edit:Record<string,unknown>,revision:number)=>invoke<string>('preview_edit',{id,edit,revision}).then(p=>convertFileSrc(p)+'?v='+Date.now()),
  edit:(id:string,edit:Record<string,unknown>,expectedRevision?:number)=>invoke<DocumentSession>('edit_document',{id,edit,expectedRevision}),
  history:(id:string,direction:string)=>invoke<DocumentSession>('document_history',{id,direction}),
  save:(id:string,output:string)=>invoke('save_document',{id,output}),
@@ -28,6 +29,6 @@ export const api = {
  cancel:(id:string)=>invoke('cancel_task',{id}),
  tasks:()=>invoke<Task[]>('list_tasks'),
  capabilities:()=>invoke<Record<string,boolean>>('capabilities'),
- preview:(tool:string,inputs:string[],options:Record<string,unknown>)=>invoke<{pages:number;selected:number;message:string;image?:string}>('preview_task',{tool,inputs,options}).then(v=>({...v,image:v.image?convertFileSrc(v.image):undefined})),
+ preview:(tool:string,inputs:string[],options:Record<string,unknown>)=>invoke<{pages:number;selected:number;message:string;image?:string;affected?:number;instances?:number}>('preview_task',{tool,inputs,options}).then(v=>({...v,image:v.image?convertFileSrc(v.image):undefined})),
  print:(id:string)=>invoke('print_document',{id})
 };

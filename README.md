@@ -4,9 +4,9 @@
 
 Make PDF better. A lightweight, local-first PDF workspace.
 
-**[Download from Releases](https://github.com/Starry331/BetterPDF/releases)** · [Current development preview](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.2)
+**[Download from Releases](https://github.com/Starry331/BetterPDF/releases)** · [Current development preview](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.3)
 
-The current DMG requires **macOS 27.2+ on Apple Silicon** and is not Developer ID signed or notarized. macOS 14 compatibility and the Windows installer are still in development.
+The current DMG targets **macOS 14+ on Apple Silicon** and is not Developer ID signed or notarized. Clean macOS 14 installation testing remains pending; Windows is deferred.
 
 ## Features and status
 
@@ -27,7 +27,7 @@ npm run desktop
 
 Engine components must be staged in `src-tauri/resources/runtime`. The application does not download missing components or use separately installed conversion software. Runtime binaries are excluded from the source repository; the current development bundle uses macOS arm64 components.
 
-The macOS assembly script requires MuPDF, qpdf, Ghostscript, Tesseract, and a standalone headless LibreOffice build. Set `BPDF_OFFICE_SOURCE` to the LibreOffice `.app` path, then run `npm run prepare:runtime`. Dependency builds are not yet reproducible with pinned source checksums, so this script is not a production release supply chain.
+The macOS assembly script builds native workers from the SHA-256-pinned archives in `scripts/native-sources.json`. Place them in `work/runtime-sources`, install CMake, and set `BPDF_OFFICE_SOURCE` to a standalone headless LibreOffice `.app`, then run `npm run prepare:runtime`. The workers target macOS 14 and link only system libraries. LibreOffice, model provenance and clean-machine validation still need release review; this is not yet the complete release supply chain.
 
 ```sh
 cargo build --manifest-path src-tauri/Cargo.toml --bin bpdf-cli

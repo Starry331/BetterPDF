@@ -1,8 +1,8 @@
 <script lang="ts">
  import PdfPage from './PdfPage.svelte';import {visibleRange} from './viewport';import type {DocumentSession} from './types';
- let {doc,page,onselect}:{doc:DocumentSession;page:number;onselect:(page:number)=>void}=$props();
+ let {doc,page,width=130,onselect}:{doc:DocumentSession;page:number;width?:number;onselect:(page:number)=>void}=$props();
  let spacer:HTMLDivElement;let range=$state({start:0,end:8});
- const layout=$derived.by(()=>{let y=0;const rows=doc.bounds.map((b,index)=>{const scale=Math.min(130/(b[2]-b[0]),180/(b[3]-b[1]));const height=(b[3]-b[1])*scale+44;const row={index,scale,y,height};y+=height;return row;});return {rows,height:y};});
+ const layout=$derived.by(()=>{let y=0;const rows=doc.bounds.map((b,index)=>{const scale=Math.min(width/(b[2]-b[0]),width*1.5/(b[3]-b[1]));const height=(b[3]-b[1])*scale+44;const row={index,scale,y,height};y+=height;return row;});return {rows,height:y};});
  const visible=$derived(layout.rows.slice(range.start,range.end));
  $effect(()=>{const rows=layout.rows;const el=spacer?.parentElement;if(!el)return;let frame=0;
   const update=()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;const next=visibleRange(rows,Math.max(0,el.scrollTop-17),el.clientHeight,240);if(next.start!==range.start||next.end!==range.end)range=next;});};

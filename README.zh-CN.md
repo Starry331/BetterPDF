@@ -2,9 +2,9 @@
 
 [English](README.md) · **简体中文**
 
-**[下载安装包（GitHub Releases）](https://github.com/Starry331/BetterPDF/releases)** · [当前开发预览版](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.2)
+**[下载安装包（GitHub Releases）](https://github.com/Starry331/BetterPDF/releases)** · [当前开发预览版](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.3)
 
-当前 DMG 适用于 **macOS 27.2+ / Apple Silicon**，尚未经过 Developer ID 签名公证。macOS 14 兼容构建和 Windows 安装包仍在开发。
+当前 DMG 构建目标为 **macOS 14+ / Apple Silicon**，尚未经过 Developer ID 签名公证。干净 macOS 14 系统的安装验证仍待完成；Windows 版本暂缓。
 
 本地 PDF 阅读、编辑与转换桌面应用。Tauri 2 / Svelte 5 / TypeScript / Rust，原生 MuPDF 渲染，AGPL-3.0-only。
 
@@ -23,7 +23,7 @@ npm run desktop
 
 PDF 引擎组件必须预先放入 `src-tauri/resources/runtime`。应用不会下载缺失组件或调用用户机器上其他安装的转换软件。运行组件不提交到源码仓库；本机开发包使用 macOS arm64 组件。
 
-macOS 组装脚本需要构建环境中的 MuPDF、qpdf、Ghostscript、Tesseract 和独立 headless LibreOffice。用 `BPDF_OFFICE_SOURCE` 指定 LibreOffice `.app` 来源后运行 `npm run prepare:runtime`。当前脚本尚未实现可复现、固定源代码校验和的依赖构建；不能作为正式发行供应链使用。
+macOS 组装脚本从固定版本、经 SHA-256 校验的源码构建 MuPDF、qpdf、Ghostscript、Tesseract 和 Leptonica；需要 CMake、make 和 Xcode 构建工具。用 `BPDF_OFFICE_SOURCE` 指定独立 headless LibreOffice `.app` 来源后运行 `npm run prepare:runtime`。原生组件可单独通过 `python3 scripts/build-native-macos.py --install` 重建。LibreOffice、OCR 模型及字体的完整来源和分发材料仍待补齐，当前不能作为首版供应链验收完成的依据。
 
 ```sh
 cargo build --manifest-path src-tauri/Cargo.toml --bin bpdf-cli
