@@ -1,5 +1,11 @@
 //! Bounded OOXML editing. Only targeted XML spans are changed; other ZIP members
 //! are copied verbatim. Layout is previewed by the bundled isolated Office worker.
+#[path="office/paragraphs.rs"]
+mod paragraphs;
+#[path="office/lists.rs"] mod lists;
+#[path="office/slides.rs"]
+mod slides;
+#[path="office/cells.rs"] mod cells;
 use quick_xml::{events::Event, Reader};
 use serde::Serialize;
 use std::{
@@ -399,6 +405,8 @@ pub fn edit(
     {
         return Err("Text is too long or contains invalid control characters".into());
     }
+    if id==ITEM_LIMIT+1{if matches!(kind,"slide_duplicate"|"slide_delete"|"slide_blank"){return slides::edit(input,output,kind,style)}return reorder_slide(input,output,kind,style)}
+    if id == ITEM_LIMIT+2 {return slides::add_text(input,output,value,style)}
     if id == ITEM_LIMIT {
         return insert_cell(input, output, value, kind, style);
     }
@@ -412,6 +420,33 @@ pub fn edit(
     }
     let mut z = archive(input)?;
     let mut s = xml(&mut z, &item.part)?;
+    if kind=="paragraph_list" {
+        if format(input)!="docx"{return Err("List editing requires Word compatibility mode".into())}
+        return lists::edit(z,output,&s,item,style["list"].as_str().ok_or("Choose list type")?);
+    }
+    if matches!(kind,"paragraph_align"|"paragraph_delete") {
+        if format(input)!="docx"{return Err("Paragraph editing requires Word compatibility mode".into())}
+        let changed=paragraphs::change(&s,item,kind,style)?;
+        return write_package(z,output,[(item.part.clone(),changed)].into_iter().collect());
+    }
+    if kind=="paragraph_after" {
+        if format(input)!="docx" {return Err("Paragraph insertion requires Word compatibility mode".into())}
+        let (pa,pb,_)=spans(&s,"p")?.into_iter().find(|(a,b,_)|*a<=item.start&&*b>=item.end).ok_or("Select text inside a paragraph")?;
+        let paragraph=&s[pa..pb];let mut reader=Reader::from_str(paragraph);
+        let name=match reader.read_event().map_err(err)? {Event::Start(e)=>e.name().as_ref().to_string(),_=>return Err("Invalid paragraph".into())};
+        let prefix=name.strip_suffix('p').unwrap_or("");
+        let mut properties=spans(paragraph,"pPr")?.first().map(|(a,b,_)|paragraph[*a..*b].to_string()).unwrap_or_default();
+        // Continue list numbering, but never duplicate section or revision boundaries.
+        for tag in ["sectPr","pPrChange"] {for (a,b,_) in spans(&properties,tag)?.into_iter().rev(){properties.replace_range(a..b,"");}}
+        let (ra,rb,_)=spans(&s,"r")?.into_iter().find(|(a,b,_)|*a<=item.start&&*b>=item.end).ok_or("Select an editable text run")?;
+        let original_run=&s[ra..rb];let rp=spans(original_run,"rPr")?.first().map(|(a,b,_)|original_run[*a..*b].to_string()).unwrap_or_default();
+        let normalized=value.replace("\r\n","\n").replace('\r',"\n");
+        let text=escaped(&normalized).replace('\n',&format!("</{prefix}t><{prefix}br/><{prefix}t xml:space=\"preserve\">"))
+            .replace('\t',&format!("</{prefix}t><{prefix}tab/><{prefix}t xml:space=\"preserve\">"));
+        let run=style_run(&format!("<{prefix}r>{rp}<{prefix}t xml:space=\"preserve\">{text}</{prefix}t></{prefix}r>"),true,style)?;
+        s.insert_str(pb,&format!("<{name}>{properties}{run}</{name}>"));
+        return write_package(z,output,[(item.part.clone(),s)].into_iter().collect());
+    }
     let fragment = &s[item.start..item.end];
     let replacement = if format(input) == "xlsx" {
         let mut r = Reader::from_str(fragment);
@@ -459,20 +494,21 @@ pub fn edit(
             return Err("Choose Text, Number or Formula".into());
         }
     } else {
-        if value.contains(['\n', '\r', '\t']) {
-            return Err(
-                "Edit one text run at a time; paragraph breaks and tabs must be retained".into(),
-            );
-        }
         let mut r = Reader::from_str(fragment);
         let e = match r.read_event().map_err(err)? {
             Event::Start(e) | Event::Empty(e) => e,
             _ => return Err("Invalid text run".into()),
         };
         let name = e.name().as_ref().to_string();
-        format!("<{name} xml:space=\"preserve\">{}</{name}>", escaped(value))
+        let normalized=value.replace("\r\n","\n").replace('\r',"\n");
+        if format(input)=="docx" {
+            let prefix=name.strip_suffix('t').unwrap_or("");
+            let content=escaped(&normalized).replace('\n',&format!("</{name}><{prefix}br/><{name} xml:space=\"preserve\">"))
+                .replace('\t',&format!("</{name}><{prefix}tab/><{name} xml:space=\"preserve\">"));
+            format!("<{name} xml:space=\"preserve\">{content}</{name}>")
+        } else {format!("<{name}>{}</{name}>",escaped(&normalized))}
     };
-    if format(input) != "xlsx" && style.as_object().is_some_and(|o| !o.is_empty()) {
+    if format(input) != "xlsx" && (style.as_object().is_some_and(|o| !o.is_empty()) || value.contains(['\n','\r','\t'])) {
         let (start, end, _) = spans(&s, "r")?
             .into_iter()
             .find(|(a, b, _)| *a <= item.start && *b >= item.end)
@@ -480,6 +516,18 @@ pub fn edit(
         let mut run = s[start..end].to_string();
         run.replace_range(item.start - start..item.end - start, &replacement);
         run = style_run(&run, format(input) == "docx", style)?;
+        if format(input)=="pptx" && value.contains(['\n','\r']) {
+            let (ta,tb,_)=spans(&run,"t")?.into_iter().next().ok_or("Missing slide text")?;
+            let mut reader=Reader::from_str(&run);
+            let event=reader.read_event().map_err(err)?;
+            let run_name=match event {Event::Start(e)=>e.name().as_ref().to_string(),_=>return Err("Invalid slide run".into())};
+            let prefix=run_name.strip_suffix('r').unwrap_or("");
+            let normalized=value.replace("\r\n","\n").replace('\r',"\n");
+            let fragments=normalized.split('\n').map(|line|{
+                let mut copy=run.clone();copy.replace_range(ta..tb,&format!("<{prefix}t>{}</{prefix}t>",escaped(line)));copy
+            }).collect::<Vec<_>>();
+            run=fragments.join(&format!("<{prefix}br/>"));
+        }
         s.replace_range(start..end, &run);
     } else {
         s.replace_range(item.start..item.end, &replacement);
@@ -508,14 +556,14 @@ pub fn edit(
             workbook.insert_str(at,&format!("<{prefix}calcPr calcId=\"0\" fullCalcOnLoad=\"1\" forceFullCalc=\"1\" calcMode=\"auto\"/>"));
         }
         changes.insert("xl/workbook.xml".into(), workbook);
+        cells::apply(&mut z,&mut changes,&item.part,&item.label,style)?;
     }
     write_package(z, output, changes)
 }
 fn write_package(
-    mut z: ZipArchive<File>,
-    output: &Path,
-    changes: std::collections::HashMap<String, String>,
-) -> Result<(), String> {
+    z: ZipArchive<File>,output:&Path,changes:std::collections::HashMap<String,String>,
+)->Result<(),String>{write_package_changes(z,output,changes.into_iter().map(|(k,v)|(k,Some(v))).collect())}
+fn write_package_changes(mut z:ZipArchive<File>,output:&Path,mut changes:std::collections::HashMap<String,Option<String>>)->Result<(),String>{
     let file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -524,7 +572,8 @@ fn write_package(
     let mut writer = ZipWriter::new(file);
     for i in 0..z.len() {
         let f = z.by_index(i).map_err(err)?;
-        if let Some(content) = changes.get(f.name()) {
+        if let Some(content) = changes.remove(f.name()) {
+            let Some(content)=content else {continue};
             writer
                 .start_file(
                     f.name(),
@@ -537,9 +586,23 @@ fn write_package(
             writer.raw_copy_file(f).map_err(err)?;
         }
     }
+    for (name,content) in changes {if let Some(content)=content{writer.start_file(name,SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)).map_err(err)?;writer.write_all(content.as_bytes()).map_err(err)?;}}
     writer.finish().map_err(err)?.sync_all().map_err(err)?;
     items(output)?;
     Ok(())
+}
+
+fn reorder_slide(input:&Path,output:&Path,kind:&str,style:&serde_json::Value)->Result<(),String>{
+    if format(input)!="pptx" {return Err("Slide ordering requires a PPTX document".into())}
+    let mut z=archive(input)?;let ordered=main_parts(&mut z,"pptx")?;
+    let part=style["part"].as_str().ok_or("Select a slide")?;
+    let index=ordered.iter().position(|(p,_)|p==part).ok_or("Invalid slide")?;
+    let other=match kind {"slide_up" if index>0=>index-1,"slide_down" if index+1<ordered.len()=>index+1,_=>return Err("Slide cannot move in that direction".into())};
+    let mut xml=xml(&mut z,"ppt/presentation.xml")?;let spans=spans(&xml,"sldId")?;
+    if spans.len()!=ordered.len(){return Err("Slide relationships are inconsistent".into())}
+    let first=index.min(other);let second=index.max(other);let (a,b,_)=spans[first];let (c,d,_)=spans[second];
+    let left=xml[a..b].to_string();let right=xml[c..d].to_string();xml.replace_range(c..d,&left);xml.replace_range(a..b,&right);
+    write_package(z,output,[("ppt/presentation.xml".into(),xml)].into_iter().collect())
 }
 
 fn formula(value: &str) -> Result<(), String> {
@@ -661,6 +724,35 @@ fn style_run(run: &str, word: bool, style: &serde_json::Value) -> Result<String,
             },
         );
         properties.replace_range(..r.buffer_position() as usize, &opening);
+    }
+    // Preserve unrelated properties while explicitly replacing theme-derived fonts/colors.
+    let mut extra=Vec::new();
+    if let Some(font)=style["font"].as_str(){
+        let font=font.trim();if font.is_empty()||font.len()>128||font.chars().any(char::is_control){return Err("Invalid font family".into())}
+        let font=escaped(font);
+        if word {extra.push(("rFonts",format!("<{prefix}rFonts {prefix}ascii=\"{font}\" {prefix}hAnsi=\"{font}\" {prefix}eastAsia=\"{font}\" {prefix}cs=\"{font}\"/>")));}
+        else {for tag in ["latin","ea","cs"]{extra.push((tag,format!("<{prefix}{tag} typeface=\"{font}\"/>")));}}
+    }
+    if let Some(color)=style["color"].as_str(){
+        let color=color.trim_start_matches('#');if color.len()!=6||!color.bytes().all(|b|b.is_ascii_hexdigit()){return Err("Color must be a six-digit RGB value".into())}
+        let color=color.to_ascii_uppercase();
+        if word {extra.push(("color",format!("<{prefix}color {prefix}val=\"{color}\"/>")));}
+        else {
+            for tag in ["noFill","solidFill","gradFill","blipFill","pattFill","grpFill"]{for (a,b,_) in spans(&properties,tag)?.into_iter().rev(){properties.replace_range(a..b,"");}}
+            extra.push(("solidFill",format!("<{prefix}solidFill><{prefix}srgbClr val=\"{color}\"/></{prefix}solidFill>")));
+        }
+    }
+    if !extra.is_empty()&&properties.ends_with("/>"){properties.truncate(properties.len()-2);properties.push_str(&format!("></{prefix}rPr>"));}
+    for (tag,replacement) in extra {
+        if let Some((a,b,_))=spans(&properties,tag)?.first(){properties.replace_range(*a..*b,&replacement);}
+        else {
+            // Insert before later schema children rather than appending after extensions.
+            let order=if word {vec!["rStyle","rFonts","b","bCs","i","iCs","caps","smallCaps","strike","dstrike","outline","shadow","emboss","imprint","noProof","snapToGrid","vanish","webHidden","color","spacing","w","kern","position","sz","szCs","highlight","u","effect","bdr","shd","fitText","vertAlign","rtl","cs","em","lang","eastAsianLayout","specVanish","oMath","rPrChange"]}else{vec!["ln","noFill","solidFill","gradFill","blipFill","pattFill","grpFill","effectLst","effectDag","highlight","uLnTx","uLn","uFillTx","uFill","latin","ea","cs","sym","hlinkClick","hlinkMouseOver","rtl","extLst"]};
+            let rank=order.iter().position(|t|*t==tag).unwrap();
+            let mut at=properties.rfind("</").ok_or("Invalid properties")?;
+            for later in &order[rank+1..]{if let Some((a,_,_))=spans(&properties,later)?.first(){at=at.min(*a);}}
+            properties.insert_str(at,&replacement);
+        }
     }
     let mut out = run.to_string();
     if let Some((a, b, _)) = existing {
@@ -799,6 +891,119 @@ mod tests {
         assert!(result.contains("<p:pic/>"));
         assert!(result.contains("val=\"123456\""));
         assert_eq!(page(&b, 0, "", "").unwrap().items[0].text, "New title");
+    }
+    #[test]
+    fn multiline_edits_keep_run_styles_and_other_content() {
+        let temp=tempfile::tempdir().unwrap();
+        for fmt in ["docx","pptx"] {
+            let input=temp.path().join(format!("in.{fmt}"));let output=temp.path().join(format!("out.{fmt}"));
+            let (part,source)=if fmt=="docx" {("word/document.xml",r#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:rPr><w:b/><w:rFonts w:asciiTheme="minorHAnsi"/></w:rPr><w:t>Old</w:t></w:r><w:r><w:t>Untouched</w:t></w:r></w:p></w:body></w:document>"#)}else{("ppt/slides/slide1.xml",r#"<p:sld xmlns:p="urn:p" xmlns:a="urn:a"><a:p><a:r><a:rPr b="1"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:rPr><a:t>Old</a:t></a:r><a:r><a:t>Untouched</a:t></a:r></a:p><p:pic/></p:sld>"#)};
+            package(&input,&[(part,source),("media/preserved.bin","DATA")]);
+            edit(&input,&output,0,"One\r\n中文 & two","text",&serde_json::json!({"font":"Noto Sans CJK SC","color":"#123ABC"})).unwrap();
+            let result=content(&output,part);assert!(result.contains("br/>"));assert!(result.contains("123ABC"));assert!(result.contains("Noto Sans CJK SC"));assert!(!result.contains("asciiTheme"));assert!(!result.contains("schemeClr"));
+            assert_eq!(page(&output,0,"","").unwrap().items.iter().map(|i|i.text.as_str()).collect::<Vec<_>>(),vec!["One","中文 & two","Untouched"]);
+            assert_eq!(content(&output,"media/preserved.bin"),"DATA");assert_eq!(content(&input,part),source);
+            let invalid=temp.path().join(format!("bad.{fmt}"));assert!(edit(&input,&invalid,0,"x","text",&serde_json::json!({"color":"red"})).is_err());assert!(!invalid.exists());
+        }
+    }
+    #[test]
+    fn inserted_paragraph_keeps_content_without_copying_section_breaks_or_objects(){
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.docx");let output=t.path().join("out.docx");
+        let source=r#"<w:document xmlns:w="urn:w"><w:body><w:p><w:pPr><w:jc w:val="center"/><w:numPr/><w:sectPr/></w:pPr><w:bookmarkStart w:id="7"/><w:r><w:rPr><w:b/></w:rPr><w:t>Original</w:t><w:drawing/></w:r></w:p><w:p><w:r><w:t>Next</w:t></w:r></w:p></w:body></w:document>"#;
+        package(&input,&[("word/document.xml",source)]);
+        edit(&input,&output,0,"Added paragraph","paragraph_after",&serde_json::json!({})).unwrap();
+        let xml=content(&output,"word/document.xml");assert_eq!(spans(&xml,"p").unwrap().len(),3);
+        for tag in ["sectPr","drawing","bookmarkStart"]{assert_eq!(spans(&xml,tag).unwrap().len(),1);}
+        assert_eq!(spans(&xml,"numPr").unwrap().len(),2);assert_eq!(spans(&xml,"b").unwrap().len(),2);assert_eq!(spans(&xml,"jc").unwrap().len(),2);
+        assert_eq!(page(&output,0,"","").unwrap().items.iter().map(|i|i.text.as_str()).collect::<Vec<_>>(),vec!["Original","Added paragraph","Next"]);
+    }
+    #[test]
+    fn slide_order_changes_only_the_presentation_index(){
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.pptx");let output=t.path().join("out.pptx");
+        package(&input,&[("ppt/presentation.xml",r#"<p:presentation xmlns:p="urn:p" xmlns:r="urn:r"><p:sldIdLst><p:sldId id="256" r:id="rId1"/><p:sldId id="257" r:id="rId2"/></p:sldIdLst></p:presentation>"#),("ppt/_rels/presentation.xml.rels",r#"<Relationships><Relationship Id="rId1" Target="slides/slide1.xml"/><Relationship Id="rId2" Target="slides/slide2.xml"/></Relationships>"#),("ppt/slides/slide1.xml","<slide><t>First</t></slide>"),("ppt/slides/slide2.xml","<slide><t>Second</t></slide>"),("ppt/media/image.png","IMAGE")]);
+        edit(&input,&output,ITEM_LIMIT+1,"","slide_up",&serde_json::json!({"part":"ppt/slides/slide2.xml"})).unwrap();
+        assert_eq!(page(&output,0,"","").unwrap().items.iter().map(|i|i.text.as_str()).collect::<Vec<_>>(),vec!["Second","First"]);
+        for part in ["ppt/slides/slide1.xml","ppt/slides/slide2.xml","ppt/_rels/presentation.xml.rels","ppt/media/image.png"]{assert_eq!(content(&input,part),content(&output,part));}
+        assert!(edit(&input,&t.path().join("invalid.pptx"),ITEM_LIMIT+1,"","slide_up",&serde_json::json!({"part":"ppt/slides/slide1.xml"})).is_err());
+    }
+    fn slide_fixture(path:&Path,linked:bool){
+        package(path,&[
+         ("[Content_Types].xml",r#"<Types><Override PartName="/ppt/slides/slide1.xml" ContentType="slide"/><Override PartName="/ppt/slides/slide2.xml" ContentType="slide"/><Override PartName="/ppt/notesSlides/notesSlide1.xml" ContentType="notes"/></Types>"#),
+         ("_rels/.rels",r#"<Relationships><Relationship Id="rId1" Type="x/presentation" Target="ppt/presentation.xml"/></Relationships>"#),
+         ("ppt/presentation.xml",r#"<p:presentation xmlns:p="urn:p" xmlns:r="urn:r"><p:sldIdLst><p:sldId id="256" r:id="rId1"/><p:sldId id="257" r:id="rId2"/></p:sldIdLst></p:presentation>"#),
+         ("ppt/_rels/presentation.xml.rels",r#"<Relationships><Relationship Id="rId1" Type="x/slide" Target="slides/slide1.xml"/><Relationship Id="rId2" Type="x/slide" Target="slides/slide2.xml"/></Relationships>"#),
+         ("ppt/slides/slide1.xml",r#"<slide><t>First</t><picture id="pic"/></slide>"#),
+         ("ppt/slides/slide2.xml","<slide><t>Second</t></slide>"),
+         ("ppt/slides/_rels/slide1.xml.rels",r#"<Relationships><Relationship Id="img" Type="x/image" Target="../media/image.png"/><Relationship Id="notes" Type="x/notesSlide" Target="../notesSlides/notesSlide1.xml"/></Relationships>"#),
+         ("ppt/slides/_rels/slide2.xml.rels",if linked {r#"<Relationships><Relationship Id="link" Type="x/slide" Target="slide1.xml"/></Relationships>"#}else{"<Relationships></Relationships>"}),
+         ("ppt/notesSlides/notesSlide1.xml","<notes><t>Speaker note</t></notes>"),
+         ("ppt/notesSlides/_rels/notesSlide1.xml.rels",r#"<Relationships><Relationship Id="slide" Type="x/slide" Target="../slides/slide1.xml"/></Relationships>"#),
+         ("ppt/media/image.png","IMAGE")]);
+    }
+    #[test]
+    fn duplicate_slide_copies_notes_and_edits_independently_then_deletes_cleanly(){
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.pptx");let copy=t.path().join("copy.pptx");let changed=t.path().join("changed.pptx");let removed=t.path().join("removed.pptx");slide_fixture(&input,false);
+        edit(&input,&copy,ITEM_LIMIT+1,"","slide_duplicate",&serde_json::json!({"part":"ppt/slides/slide1.xml"})).unwrap();
+        let p=page(&copy,0,"","").unwrap();assert_eq!(p.parts,vec!["ppt/slides/slide1.xml","ppt/slides/slide3.xml","ppt/slides/slide2.xml"]);
+        assert_eq!(content(&copy,"ppt/notesSlides/notesSlide2.xml"),content(&input,"ppt/notesSlides/notesSlide1.xml"));
+        assert!(content(&copy,"ppt/notesSlides/_rels/notesSlide2.xml.rels").contains("/ppt/slides/slide3.xml"));assert!(content(&copy,"ppt/slides/_rels/slide3.xml.rels").contains("/ppt/notesSlides/notesSlide2.xml"));
+        edit(&copy,&changed,1,"Only copy","text",&serde_json::json!({})).unwrap();assert_eq!(page(&changed,0,"","").unwrap().items[0].text,"First");assert_eq!(page(&changed,0,"","").unwrap().items[1].text,"Only copy");
+        edit(&changed,&removed,ITEM_LIMIT+1,"","slide_delete",&serde_json::json!({"part":"ppt/slides/slide3.xml"})).unwrap();
+        assert_eq!(page(&removed,0,"","").unwrap().parts.len(),2);let z=archive(&removed).unwrap();for part in ["ppt/slides/slide3.xml","ppt/slides/_rels/slide3.xml.rels","ppt/notesSlides/notesSlide2.xml","ppt/notesSlides/_rels/notesSlide2.xml.rels"]{assert!(!z.file_names().any(|n|n==part));}
+        assert_eq!(content(&removed,"ppt/media/image.png"),"IMAGE");assert!(!content(&removed,"[Content_Types].xml").contains("slide3.xml"));
+        let one=t.path().join("one.pptx");edit(&removed,&one,ITEM_LIMIT+1,"","slide_delete",&serde_json::json!({"part":"ppt/slides/slide1.xml"})).unwrap();assert_eq!(page(&one,0,"","").unwrap().parts.len(),1);
+        let empty=t.path().join("empty.pptx");assert!(edit(&one,&empty,ITEM_LIMIT+1,"","slide_delete",&serde_json::json!({"part":"ppt/slides/slide2.xml"})).unwrap_err().contains("at least one"));assert!(!empty.exists());
+
+    }
+    #[test]
+    fn deletion_rejects_incoming_links_without_writing_output(){
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.pptx");let output=t.path().join("out.pptx");slide_fixture(&input,true);
+        assert!(edit(&input,&output,ITEM_LIMIT+1,"","slide_delete",&serde_json::json!({"part":"ppt/slides/slide1.xml"})).unwrap_err().contains("links to this slide"));assert!(!output.exists());assert_eq!(page(&input,0,"","").unwrap().parts.len(),2);
+    }
+    #[test]
+    fn paragraph_alignment_preserves_runs_and_nested_revision_properties(){
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.docx");let output=t.path().join("out.docx");
+        package(&input,&[("word/document.xml",r#"<w:document xmlns:w="urn:w"><w:body><w:p><w:pPr><w:spacing w:after="120"/><w:pPrChange><w:pPr><w:jc w:val="left"/></w:pPr></w:pPrChange></w:pPr><w:r><w:t>Keep</w:t></w:r><w:r><w:t>Also keep</w:t></w:r></w:p></w:body></w:document>"#)]);
+        edit(&input,&output,0,"","paragraph_align",&serde_json::json!({"alignment":"center"})).unwrap();let result=content(&output,"word/document.xml");
+        assert!(result.contains("<w:jc w:val=\"center\"/><w:pPrChange>"));assert!(result.contains("<w:jc w:val=\"left\"/>"));assert!(result.contains("w:after=\"120\""));assert_eq!(page(&output,0,"","").unwrap().items.len(),2);
+        assert!(edit(&input,&t.path().join("invalid.docx"),0,"","paragraph_align",&serde_json::json!({"alignment":"bad"})).is_err());
+    }
+    #[test]
+    fn paragraph_deletion_preserves_last_cell_and_rejects_structural_references(){
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.docx");let output=t.path().join("out.docx");
+        package(&input,&[("word/document.xml",r#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>First</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>Last</w:t></w:r></w:p></w:body></w:document>"#)]);
+        edit(&input,&output,1,"","paragraph_delete",&serde_json::json!({})).unwrap();assert_eq!(page(&output,0,"","").unwrap().items.iter().map(|i|i.text.as_str()).collect::<Vec<_>>(),vec!["First","","Last"]);
+        let deleted=t.path().join("deleted.docx");edit(&input,&deleted,0,"","paragraph_delete",&serde_json::json!({})).unwrap();assert_eq!(page(&deleted,0,"","").unwrap().items.iter().map(|i|i.text.as_str()).collect::<Vec<_>>(),vec!["Cell","Last"]);
+        for (index,marker) in ["<w:sectPr/>","<w:bookmarkStart/>","<w:commentRangeEnd/>","<w:fldChar/>","<w:footnoteReference/>","<w:ins/>"] .iter().enumerate(){
+            let source=t.path().join(format!("guard-{index}.docx"));package(&source,&[("word/document.xml",&format!("<w:document xmlns:w=\"urn:w\"><w:body><w:p>{marker}<w:r><w:t>Guard</w:t></w:r></w:p></w:body></w:document>"))]);let target=t.path().join(format!("guard-out-{index}.docx"));assert!(edit(&source,&target,0,"","paragraph_delete",&serde_json::json!({})).is_err());assert!(!target.exists());
+        }
+    }
+    #[test]
+    fn paragraph_delete_guards_enclosing_revision_and_nested_table_tail() {
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.docx");let output=t.path().join("out.docx");
+        package(&input,&[("word/document.xml",r#"<w:document xmlns:w="urn:w"><w:body><w:ins><w:p><w:r><w:t>Revision</w:t></w:r></w:p></w:ins></w:body></w:document>"#)]);
+        assert!(edit(&input,&output,0,"","paragraph_delete",&serde_json::json!({})).is_err());assert!(!output.exists());
+        package(&input,&[("word/document.xml",r#"<w:document xmlns:w="urn:w"><w:body><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Before</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Nested</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>Tail</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"#)]);
+        edit(&input,&output,2,"","paragraph_delete",&serde_json::json!({})).unwrap();
+        assert!(content(&output,"word/document.xml").contains("</w:tbl><w:p><w:r><w:t xml:space=\"preserve\"></w:t></w:r></w:p></w:tc>"));
+    }
+    #[test]
+    fn cell_styles_are_isolated_and_reapplying_does_not_grow_resources(){
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.xlsx");let output=t.path().join("out.xlsx");
+        package(&input,&[("[Content_Types].xml","<Types/>"),("xl/_rels/workbook.xml.rels",r#"<Relationships><Relationship Id="sheet" Type="x/worksheet" Target="worksheets/sheet1.xml"/></Relationships>"#),("xl/workbook.xml",r#"<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet" sheetId="1" r:id="sheet"/></sheets></workbook>"#),("xl/worksheets/sheet1.xml",r#"<worksheet><sheetData><row r="1"><c r="A1"><v>1.25</v></c><c r="B1"><v>7</v></c></row></sheetData></worksheet>"#),("media/keep.bin","SHARED")]);
+        let style=serde_json::json!({"bold":true,"color":"#227744","fill":"#FFF2CC","numberFormat":"percent","horizontal":"center","wrap":true});
+        edit(&input,&output,0,"1.25","number",&style).unwrap();let sheet=content(&output,"xl/worksheets/sheet1.xml");assert!(sheet.contains(r#"<c r="B1"><v>7</v></c>"#));let styles=content(&output,"xl/styles.xml");let fonts=spans(&styles,"font").unwrap();assert_eq!(fonts.len(),2);assert!(!styles[fonts[0].0..fonts[0].1].contains("227744"));assert!(styles.contains("FF227744"));assert!(styles.contains("FFFFF2CC"));assert!(styles.contains(r#"numFmtId="10""#));assert_eq!(content(&output,"media/keep.bin"),"SHARED");
+        let again=t.path().join("again.xlsx");edit(&output,&again,0,"1.25","number",&style).unwrap();assert_eq!(content(&again,"xl/styles.xml"),styles);
+        let bad=t.path().join("bad.xlsx");assert!(edit(&input,&bad,0,"1.25","number",&serde_json::json!({"numberFormat":"unsupported"})).is_err());assert!(!bad.exists());
+    }
+    #[test]
+    fn word_lists_have_independent_definitions_and_inserted_items_continue(){
+        let t=tempfile::tempdir().unwrap();let input=t.path().join("in.docx");let first=t.path().join("first.docx");let second=t.path().join("second.docx");let inserted=t.path().join("inserted.docx");
+        package(&input,&[("[Content_Types].xml","<Types/>"),("word/document.xml",r#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>One</w:t></w:r></w:p><w:p><w:r><w:t>Two</w:t></w:r></w:p></w:body></w:document>"#)]);
+        edit(&input,&first,0,"","paragraph_list",&serde_json::json!({"list":"bullet"})).unwrap();edit(&first,&second,1,"","paragraph_list",&serde_json::json!({"list":"decimal"})).unwrap();
+        let numbering=content(&second,"word/numbering.xml");assert_eq!(spans(&numbering,"abstractNum").unwrap().len(),2);assert_eq!(spans(&numbering,"num").unwrap().len(),2);
+        edit(&second,&inserted,1,"Next","paragraph_after",&serde_json::json!({})).unwrap();let document=content(&inserted,"word/document.xml");let ids=spans(&document,"numId").unwrap().iter().map(|(a,b,_)|slides::attribute(&document[*a..*b],"w:val").unwrap()).collect::<Vec<_>>();assert_eq!(ids,vec!["1","2","2"]);
+        let cleared=t.path().join("cleared.docx");edit(&inserted,&cleared,2,"","paragraph_list",&serde_json::json!({"list":"none"})).unwrap();assert!(content(&cleared,"word/document.xml").contains(r#"<w:numId w:val="0"/>"#));
     }
     #[test]
     fn invalid_xml_entities_are_rejected() {

@@ -1,0 +1,7 @@
+{
+  "scope": "Selected files allowed; unselected reads, escaping symlinks and out-of-scope writes denied on this Mac",
+  "passed": true,
+  "case": "test engine::isolation_tests::worker_cannot_read_unselected_files_or_follow_escaping_symlinks ... ok",
+  "rustLogSha256": "bf3d99edca55b09f1e2fe4063a00a93f7d55de961c76d19937f16d8b288e02db",
+  "sourceSha256": "da16ffa85d15fe707933c8c17f30be3734076d5886c805fcf1f38242bf9516cf"
+}

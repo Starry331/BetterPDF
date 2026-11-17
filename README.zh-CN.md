@@ -2,13 +2,15 @@
 
 [English](README.md) · **简体中文**
 
-**[下载安装包（GitHub Releases）](https://github.com/Starry331/BetterPDF/releases)** · [当前开发预览版](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.3)
+**[下载安装包（GitHub Releases）](https://github.com/Starry331/BetterPDF/releases)** · [当前开发预览版](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.4)
 
 当前 DMG 构建目标为 **macOS 14+ / Apple Silicon**，尚未经过 Developer ID 签名公证。干净 macOS 14 系统的安装验证仍待完成；Windows 版本暂缓。
 
 本地 PDF 阅读、编辑与转换桌面应用。Tauri 2 / Svelte 5 / TypeScript / Rust，原生 MuPDF 渲染，AGPL-3.0-only。
 
 **当前是开发版本，尚未达到完整首版发布标准。** 34 个工具已接入实际处理流程，并在本机生成和检查输出；这不等于所有格式、排版、损坏文件和平台均已验收。详见 [当前验证状态](docs/STATUS.md)。
+
+DMG 内置全部运行引擎、OCR 模型和字体，无需另外下载组件。完整安装约 **583 MB**。详见 [压力测试报告](docs/PRESSURE_TESTS.md)。
 
 ## 开发
 

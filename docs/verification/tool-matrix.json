@@ -1,0 +1,245 @@
+{
+  "scope": "Basic successful fixtures and input-rejection cases; not arbitrary-document compatibility",
+  "testSourceSha256": "363e2df69345cdfebe7f42675367f4edb2915a999297f07f1c32f6118a191f9c",
+  "reportSha256": "69419b0c2676a356de9988f820c34a540f74564bbe70e3e918e16ba94a517f76",
+  "tools": [
+    {
+      "tool": "merge",
+      "successCase": "merge",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "split",
+      "successCase": "split",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "rotate",
+      "successCase": "rotate",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "delete",
+      "successCase": "delete",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "extract",
+      "successCase": "extract and descending ranges",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "reorder",
+      "successCase": "reorder with duplicates",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "resize",
+      "successCase": "resize",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "crop",
+      "successCase": "crop",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "to_docx",
+      "successCase": "PDF to DOCX",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "to_pptx",
+      "successCase": "PDF to PPTX",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "to_xlsx",
+      "successCase": "PDF to XLSX",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "to_images",
+      "successCase": "PDF to images",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "to_pdfa",
+      "successCase": "PDF/A-2b generation",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "to_txt",
+      "successCase": "PDF to TXT",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "to_md",
+      "successCase": "PDF to Markdown",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "to_epub",
+      "successCase": "PDF to EPUB",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "word_pdf",
+      "successCase": "Word to PDF roundtrip",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "ppt_pdf",
+      "successCase": "PowerPoint to PDF roundtrip",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "excel_pdf",
+      "successCase": "Excel to PDF roundtrip",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "images_pdf",
+      "successCase": "images to PDF",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "epub_pdf",
+      "successCase": "EPUB to PDF",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "caj_pdf",
+      "successCase": "CAJ recovery",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "file_pdf",
+      "successCase": "generic file to PDF",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "compress",
+      "successCase": "lossless compression",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "repair",
+      "successCase": "repair",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "ocr",
+      "successCase": "OCR with bundled English model",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "grayscale",
+      "successCase": "grayscale",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "watermark",
+      "successCase": "add watermark",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "remove_watermark",
+      "successCase": "remove independent watermark",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "protect",
+      "successCase": "AES-256 protection",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "unlock",
+      "successCase": "unlock",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "rasterize",
+      "successCase": "rasterize",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "flatten",
+      "successCase": "flatten fields",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    },
+    {
+      "tool": "file_images",
+      "successCase": "generic file to images",
+      "successPassed": true,
+      "failureCase": "all 34 tools reject missing and unsupported inputs without output",
+      "failurePassed": true
+    }
+  ]
+}

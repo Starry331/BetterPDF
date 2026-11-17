@@ -1,0 +1,15 @@
+{
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "scope": "Real ENOSPC on a private 32 MB mounted image; conversion path, not GUI save-dialog acceptance",
+  "results": [
+    {
+      "name": "full-volume rejects conversion without publishing output or changing source",
+      "passed": true,
+      "error": "No space left on device (os error 28) at path \"/Users/starry/Documents/ChatGPT/BPDF/work/bpdf-failure-wl4vsxb5/mount/.tmprBczV3\""
+    },
+    {
+      "name": "native reader remains usable after write failure",
+      "passed": true
+    }
+  ]
+}

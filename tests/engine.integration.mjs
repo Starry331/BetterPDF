@@ -1,8 +1,8 @@
 import {spawnSync} from 'node:child_process';
-import {mkdirSync,writeFileSync,readFileSync,existsSync,readdirSync,statSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync,existsSync,readdirSync,statSync,openSync,closeSync,writeSync} from 'node:fs';
 import {resolve,join} from 'node:path';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
 const root=resolve(import.meta.dirname,'..'),run=join(root,'work','integration-'+Date.now());mkdirSync(run,{recursive:true});
-const cli=join(root,'src-tauri/target/debug/bpdf-cli'),mutool=join(root,'src-tauri/resources/runtime/bin/mutool');let seq=0;const results=[];
+const cli=process.env.BPDF_TEST_CLI||join(root,'src-tauri/target/debug/bpdf-cli'),mutool=join(process.env.BPDF_RESOURCES||join(root,'src-tauri/resources'),'runtime/bin/mutool');let seq=0;const results=[];
 function request(req){const f=join(run,'request-'+seq+++'.json');writeFileSync(f,JSON.stringify(req));const start=performance.now();const p=spawnSync(cli,[f],{encoding:'utf8',timeout:180000,cwd:root});let parsed;try{parsed=JSON.parse(p.stdout.trim());}catch{throw Error(p.stderr||p.error||p.stdout)}if(!parsed.ok)throw Error(parsed.error);return {data:parsed.result,ms:performance.now()-start};}
 function job(tool,inputs,options={},suffix='pdf'){const output=join(run,tool+'-'+seq+(suffix?'.'+suffix:''));return {...request({mode:'job',tool,inputs,output,options}),output};}
 function info(path,password=''){return request({action:'info',input:path,password}).data;}
@@ -12,6 +12,12 @@ const sample=join(run,'sample.pdf');assert.equal(spawnSync(mutool,['run',join(ro
 const simple=join(run,'simple.pdf');request({action:'fixture',output:simple,pages:3});
 let png=join(run,'sample.png');request({action:'render',input:sample,page:0,scale:1,output:png});let docx,pptx,xlsx,epub,protectedFile,watermarked;
 test('native rendering and text extraction',()=>{assert(statSync(png).size>1000);assert(page(sample).lines.some(l=>l.text.includes('Original editable sentence')));});
+test('ordinary reading omits glyph coordinates but preserves editable lines and widgets',()=>{
+ const full=page(sample),light=request({action:'page',input:sample,page:0,includeChars:false}).data;
+ assert(full.lines.some(l=>l.chars?.length));assert(light.lines.every(l=>!('chars' in l)));
+ assert.deepEqual(light.lines,full.lines.map(({chars,...line})=>line));assert.deepEqual(light.widgets,full.widgets);assert.deepEqual(light.images,full.images);
+ const detailed=Buffer.byteLength(JSON.stringify(full)),ordinary=Buffer.byteLength(JSON.stringify(light));assert(ordinary<detailed*.6);writeFileSync(join(run,'reading-payload.json'),JSON.stringify({detailed,ordinary,reduction:1-ordinary/detailed},null,2));
+});
 test('merge',()=>assert.equal(info(job('merge',[sample,simple]).output).pages,6));
 test('split',()=>{const r=job('split',[sample],{chunk:2},'');assert.equal(readdirSync(r.output).length,2);});
 test('rotate',()=>{const r=job('rotate',[sample],{pages:'2',angle:90});assert.equal(info(r.output).bounds[1][2],842);});
@@ -34,7 +40,37 @@ test('Excel to PDF roundtrip',()=>{assert(xlsx);const r=job('excel_pdf',[xlsx]);
 test('images to PDF',()=>assert.equal(info(job('images_pdf',[png,png]).output).pages,2));
 test('EPUB to PDF',()=>{assert(epub);assert(info(job('epub_pdf',[epub]).output).pages>=1);});
 test('CAJ recovery',()=>{const pdf=readFileSync(simple);const header=Buffer.alloc(512);header.write('CAJ');header.writeUInt32LE(3,0x10);header.writeUInt32LE(0x20,0x14);header.writeUInt32LE(512,0x20);const caj=join(run,'test.caj');writeFileSync(caj,Buffer.concat([header,pdf]));assert.equal(info(job('caj_pdf',[caj]).output).pages,3);});
+test('HN seek-based multi-page variants and large sparse input',()=>{
+ const jpeg=join(run,'hn-stream-page.jpg'),script=join(run,'hn-stream-fixture.js');writeFileSync(script,`new Image(${JSON.stringify(png)}).toPixmap().saveAsJPEG(${JSON.stringify(jpeg)},90);`);assert.equal(spawnSync(mutool,['run',script]).status,0);const image=readFileSync(jpeg);
+ for(const variant of ['c8','legacy','toc']){
+  const header=Buffer.alloc(1024),table=variant==='c8'?0x50:variant==='legacy'?0xd8:0x15c;
+  if(variant==='c8'){header[0]=0xc8;header.writeUInt32LE(2,8);}else{header.write('HN');header.writeUInt32LE(2,0x90);if(variant==='legacy')header[4]=0xc8;}
+  const start=variant==='c8'?129*1024*1024:1024;
+  for(let i=0;i<2;i++){header.writeUInt32LE(start+i*(12+image.length),table+i*20);header.writeUInt16LE(1,table+i*20+8);}
+  const input=join(run,`hn-stream-${variant}.caj`),fd=openSync(input,'w');try{writeSync(fd,header,0,header.length,0);for(let i=0;i<2;i++){const at=start+i*(12+image.length),h=Buffer.alloc(12);h.writeUInt32LE(1,0);h.writeUInt32LE(at+12,4);h.writeUInt32LE(image.length,8);writeSync(fd,h,0,12,at);writeSync(fd,image,0,image.length,at+12);}}finally{closeSync(fd);}
+  const output=job('caj_pdf',[input]).output;assert.equal(info(output).pages,2);assert.equal(page(output,0).images.length,1);assert.equal(page(output,1).images.length,1);assert.deepEqual(page(output,0).images.map(x=>x.rect),page(output,1).images.map(x=>x.rect));
+  // A late malformed page must reject the whole conversion, not publish its first page.
+  const patch=Buffer.alloc(4);patch.writeUInt32LE(3);const edit=openSync(input,'r+');try{writeSync(edit,patch,0,4,start+12+image.length);}finally{closeSync(edit);}
+  const rejected=join(run,`hn-rejected-${variant}.pdf`);assert.throws(()=>request({mode:'job',tool:'caj_pdf',inputs:[input],output:rejected,options:{}}),/encoding is not supported/);assert(!existsSync(rejected));
+ }
+});
 test('HN single JPEG page and malformed image rejection',()=>{const jpeg=join(run,'hn-page.jpg'),script=join(run,'hn-fixture.js');writeFileSync(script,`new Image(${JSON.stringify(png)}).toPixmap().saveAsJPEG(${JSON.stringify(jpeg)},90);`);assert.equal(spawnSync(mutool,['run',script]).status,0);const image=readFileSync(jpeg),bytes=Buffer.alloc(0x70+image.length);bytes[0]=0xc8;bytes.writeUInt32LE(1,8);bytes.writeUInt32LE(0x64,0x50);bytes.writeUInt16LE(1,0x58);bytes.writeUInt32LE(1,0x64);bytes.writeUInt32LE(0x70,0x68);bytes.writeUInt32LE(image.length,0x6c);image.copy(bytes,0x70);const input=join(run,'single-page.caj');writeFileSync(input,bytes);const output=job('caj_pdf',[input]).output;assert.equal(info(output).pages,1);assert.equal(page(output).images.length,1);const truncated=join(run,'truncated-hn.caj');writeFileSync(truncated,bytes.subarray(0,bytes.length-20));assert.throws(()=>job('caj_pdf',[truncated]),/Truncated HN image/);const multiple=join(run,'unsupported-hn.caj');bytes.writeUInt16LE(2,0x58);writeFileSync(multiple,bytes);assert.throws(()=>job('caj_pdf',[multiple]),/multiple image fragments/);});
+test('HN inverted JPEG orientation preserves pixels without recompression',()=>{
+ const ppm=join(run,'hn-colors.ppm'),jpeg=join(run,'hn-colors.jpg'),script=join(run,'hn-colors.js');
+ const pixels=Buffer.alloc(16*20*3);for(let y=0;y<20;y++)for(let x=0;x<16;x++)pixels[(y*16+x)*3+(y<10?0:2)]=255;
+ writeFileSync(ppm,Buffer.concat([Buffer.from('P6\n16 20\n255\n'),pixels]));
+ writeFileSync(script,`new Image(${JSON.stringify(ppm)}).toPixmap().saveAsJPEG(${JSON.stringify(jpeg)},100);`);
+ assert.equal(spawnSync(mutool,['run',script]).status,0);
+ const image=readFileSync(jpeg),rendered=[];
+ for(const kind of [1,2]){
+  const bytes=Buffer.alloc(0x70+image.length);bytes[0]=0xc8;bytes.writeUInt32LE(1,8);bytes.writeUInt32LE(0x64,0x50);bytes.writeUInt16LE(1,0x58);bytes.writeUInt32LE(kind,0x64);bytes.writeUInt32LE(0x70,0x68);bytes.writeUInt32LE(image.length,0x6c);image.copy(bytes,0x70);
+  const input=join(run,`hn-orientation-${kind}.caj`);writeFileSync(input,bytes);const output=job('caj_pdf',[input]).output;
+  const render=join(run,`hn-orientation-${kind}.ppm`);const draw=spawnSync(mutool,['draw','-q','-r','72','-c','rgb','-F','ppm','-o',render,output]);assert.equal(draw.status,0,String(draw.stderr));
+  assert.deepEqual(info(output).bounds[0],[0,0,16,20]);rendered.push(readFileSync(render).subarray(-pixels.length));
+ }
+ assert(rendered[0][0]>240 && rendered[0][2]<15);assert(rendered[1][0]<15 && rendered[1][2]>240);
+ for(let y=0;y<20;y++)assert.deepEqual(rendered[0].subarray(y*48,(y+1)*48),rendered[1].subarray((19-y)*48,(20-y)*48));
+});
 test('generic file to PDF',()=>{const file=join(run,'hello.txt');writeFileSync(file,'Hello BPDF\nLocal text document.');assert(info(job('file_pdf',[file]).output).pages>=1);});
 test('HTML local image resources survive conversion without running scripts',()=>{const input=join(run,'local.html');writeFileSync(input,'<html><body><h1>Local resources</h1><img src="sample.png" width="120" height="160"/><script>document.write("SCRIPT_EXECUTED")</script></body></html>');const output=job('file_pdf',[input]).output;assert(page(output).images.length>0);assert(page(output).lines.some(l=>l.text.includes('Local resources')));assert(!page(output).lines.some(l=>l.text.includes('SCRIPT_EXECUTED')));});
 test('lossless compression',()=>assert.equal(info(job('compress',[sample],{quality:'lossless'}).output).pages,3));
@@ -52,6 +88,7 @@ test('watermark preview reports matching pages and rejects unknown image',()=>{c
 test('monochrome respects selected pages',()=>{const r=job('grayscale',[simple],{pages:'2',dpi:72,colorMode:'mono'});assert.equal(info(r.output).pages,1);});
 test('AES-256 protection',()=>{protectedFile=job('protect',[sample],{newPassword:'local-pass-123'}).output;assert.throws(()=>info(protectedFile),/PASSWORD_REQUIRED/);assert.equal(info(protectedFile,'local-pass-123').pages,3);});
 test('unlock',()=>{assert(protectedFile);assert.equal(info(job('unlock',[protectedFile],{password:'local-pass-123'}).output).pages,3);});
+test('paged raster and grayscale preserve selected order and duplicate pages',()=>{for(const tool of ['rasterize','grayscale']){const r=job(tool,[sample],{pages:'3,1,3',dpi:72});assert.equal(info(r.output).pages,3);for(let i=0;i<3;i++){assert.equal(page(r.output,i).lines.length,0);assert.equal(page(r.output,i).images.length,1);}const a=join(run,tool+'-first.png'),b=join(run,tool+'-last.png');request({action:'render',input:r.output,page:0,scale:1,output:a});request({action:'render',input:r.output,page:2,scale:1,output:b});assert.deepEqual(readFileSync(a),readFileSync(b));}});
 test('rasterize',()=>{const r=job('rasterize',[sample],{dpi:72});assert.equal(info(r.output).pages,3);assert.equal(page(r.output).lines.length,0);});
 test('flatten fields',()=>{const r=job('flatten',[sample]);assert.equal(page(r.output).widgets.length,0);assert(page(r.output).lines.some(l=>l.text.includes('Alice')));});
 test('generic file to images',()=>{assert(docx);const r=job('file_images',[docx],{dpi:72},'');assert(readdirSync(r.output).length>=3);});

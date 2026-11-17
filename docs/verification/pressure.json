@@ -1,0 +1,488 @@
+{
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "resources": "BPDF.app/Contents/Resources/resources",
+  "inputBytes": 201734734,
+  "pages": 1000,
+  "scope": "Bounded worker stress with packaged resources and minimal PATH; sampled total descendant RSS, not GUI or baseline hardware; all subprocesses exit between repeated renders",
+  "originalUnchanged": true,
+  "results": [
+    {
+      "name": "rotate-1000",
+      "passed": true,
+      "seconds": 1.569,
+      "sampledPeakProcessTreeBytes": 22790144,
+      "readerProbeSeconds": [
+        1.079
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "rotate-1000-reopen",
+      "passed": true,
+      "seconds": 0.07,
+      "sampledPeakProcessTreeBytes": 5914624,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "compress-1000",
+      "passed": true,
+      "seconds": 2.786,
+      "sampledPeakProcessTreeBytes": 27934720,
+      "readerProbeSeconds": [
+        0.038,
+        0.041,
+        0.039,
+        0.041,
+        0.041,
+        0.041,
+        0.041
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "compress-1000-reopen",
+      "passed": true,
+      "seconds": 0.072,
+      "sampledPeakProcessTreeBytes": 4472832,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "extract-12",
+      "passed": true,
+      "seconds": 0.14,
+      "sampledPeakProcessTreeBytes": 10829824,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "extract-12-reopen",
+      "passed": true,
+      "seconds": 0.069,
+      "sampledPeakProcessTreeBytes": 2998272,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "rasterize-12",
+      "passed": true,
+      "seconds": 0.957,
+      "sampledPeakProcessTreeBytes": 33865728,
+      "readerProbeSeconds": [
+        0.041,
+        0.039
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "rasterize-12-reopen",
+      "passed": true,
+      "seconds": 0.071,
+      "sampledPeakProcessTreeBytes": 6717440,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "rasterize-1000",
+      "passed": true,
+      "seconds": 43.245,
+      "sampledPeakProcessTreeBytes": 43581440,
+      "readerProbeSeconds": [
+        0.04,
+        0.037,
+        0.04,
+        0.038,
+        0.041,
+        0.04,
+        0.037,
+        0.041,
+        0.041,
+        0.041,
+        0.038,
+        0.039,
+        0.041,
+        0.041,
+        0.041,
+        0.041,
+        0.041,
+        0.041,
+        0.04,
+        0.041,
+        0.037,
+        0.039,
+        0.041,
+        0.038,
+        0.037,
+        0.041,
+        0.04,
+        0.04,
+        0.042,
+        0.039,
+        0.04,
+        0.039,
+        0.041,
+        0.041,
+        0.041,
+        0.041,
+        0.041,
+        0.042,
+        0.041,
+        0.041,
+        0.036,
+        0.041,
+        0.041,
+        0.037,
+        0.042,
+        0.041,
+        0.041,
+        0.041,
+        0.041,
+        0.037,
+        0.041,
+        0.042,
+        0.039,
+        0.041,
+        0.041,
+        0.04,
+        0.041,
+        0.041,
+        0.041,
+        0.039,
+        0.039,
+        0.041,
+        0.041,
+        0.039,
+        0.041,
+        0.041,
+        0.038,
+        0.042,
+        0.042,
+        0.039,
+        0.041,
+        0.039,
+        0.042,
+        0.038,
+        0.041,
+        0.038,
+        0.041,
+        0.042,
+        0.041,
+        0.039,
+        0.041,
+        0.038,
+        0.041,
+        0.041,
+        0.038,
+        0.04,
+        0.04,
+        0.04,
+        0.04,
+        0.042,
+        0.042,
+        0.04,
+        0.036,
+        0.038,
+        0.041,
+        0.041,
+        0.039,
+        0.041,
+        0.041,
+        0.041,
+        0.037,
+        0.04,
+        0.041,
+        0.117,
+        0.045,
+        0.041,
+        0.042,
+        0.037,
+        0.036,
+        0.04,
+        0.041,
+        0.041,
+        0.042,
+        0.037
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "rasterize-1000-reopen",
+      "passed": true,
+      "seconds": 0.07,
+      "sampledPeakProcessTreeBytes": 5554176,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "verify-1000-raster-pages",
+      "passed": true,
+      "seconds": 0.07,
+      "sampledPeakProcessTreeBytes": 5701632,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "cancel-1000-ocr",
+      "passed": true,
+      "seconds": 0.753,
+      "sampledPeakProcessTreeBytes": 112787456,
+      "readerProbeSeconds": [
+        0.041,
+        0.042
+      ],
+      "exitCode": 1
+    },
+    {
+      "name": "cancel-1000-raster",
+      "passed": true,
+      "seconds": 0.76,
+      "sampledPeakProcessTreeBytes": 47710208,
+      "readerProbeSeconds": [
+        0.041,
+        0.042
+      ],
+      "exitCode": 1
+    },
+    {
+      "name": "repeated-render-0",
+      "passed": true,
+      "seconds": 0.141,
+      "sampledPeakProcessTreeBytes": 3702784,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-1",
+      "passed": true,
+      "seconds": 0.139,
+      "sampledPeakProcessTreeBytes": 10780672,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-2",
+      "passed": true,
+      "seconds": 0.139,
+      "sampledPeakProcessTreeBytes": 10829824,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-3",
+      "passed": true,
+      "seconds": 0.136,
+      "sampledPeakProcessTreeBytes": 10797056,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-4",
+      "passed": true,
+      "seconds": 0.138,
+      "sampledPeakProcessTreeBytes": 10846208,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-5",
+      "passed": true,
+      "seconds": 0.069,
+      "sampledPeakProcessTreeBytes": 3702784,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-6",
+      "passed": true,
+      "seconds": 0.139,
+      "sampledPeakProcessTreeBytes": 10829824,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-7",
+      "passed": true,
+      "seconds": 0.139,
+      "sampledPeakProcessTreeBytes": 10829824,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-8",
+      "passed": true,
+      "seconds": 0.132,
+      "sampledPeakProcessTreeBytes": 10813440,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-9",
+      "passed": true,
+      "seconds": 0.132,
+      "sampledPeakProcessTreeBytes": 10813440,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-10",
+      "passed": true,
+      "seconds": 0.133,
+      "sampledPeakProcessTreeBytes": 10797056,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-11",
+      "passed": true,
+      "seconds": 0.133,
+      "sampledPeakProcessTreeBytes": 10813440,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-12",
+      "passed": true,
+      "seconds": 0.133,
+      "sampledPeakProcessTreeBytes": 10747904,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-13",
+      "passed": true,
+      "seconds": 0.134,
+      "sampledPeakProcessTreeBytes": 10813440,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-14",
+      "passed": true,
+      "seconds": 0.133,
+      "sampledPeakProcessTreeBytes": 10797056,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-15",
+      "passed": true,
+      "seconds": 0.137,
+      "sampledPeakProcessTreeBytes": 10780672,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-16",
+      "passed": true,
+      "seconds": 0.136,
+      "sampledPeakProcessTreeBytes": 10862592,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-17",
+      "passed": true,
+      "seconds": 0.139,
+      "sampledPeakProcessTreeBytes": 10797056,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-18",
+      "passed": true,
+      "seconds": 0.137,
+      "sampledPeakProcessTreeBytes": 6864896,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-19",
+      "passed": true,
+      "seconds": 0.133,
+      "sampledPeakProcessTreeBytes": 10797056,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-20",
+      "passed": true,
+      "seconds": 0.139,
+      "sampledPeakProcessTreeBytes": 6881280,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-21",
+      "passed": true,
+      "seconds": 0.133,
+      "sampledPeakProcessTreeBytes": 10797056,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-22",
+      "passed": true,
+      "seconds": 0.139,
+      "sampledPeakProcessTreeBytes": 10813440,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-23",
+      "passed": true,
+      "seconds": 0.137,
+      "sampledPeakProcessTreeBytes": 5472256,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-24",
+      "passed": true,
+      "seconds": 0.133,
+      "sampledPeakProcessTreeBytes": 10747904,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-25",
+      "passed": true,
+      "seconds": 0.14,
+      "sampledPeakProcessTreeBytes": 10797056,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-26",
+      "passed": true,
+      "seconds": 0.141,
+      "sampledPeakProcessTreeBytes": 10895360,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-27",
+      "passed": true,
+      "seconds": 0.14,
+      "sampledPeakProcessTreeBytes": 10797056,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-28",
+      "passed": true,
+      "seconds": 0.133,
+      "sampledPeakProcessTreeBytes": 10780672,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    },
+    {
+      "name": "repeated-render-29",
+      "passed": true,
+      "seconds": 0.14,
+      "sampledPeakProcessTreeBytes": 10813440,
+      "readerProbeSeconds": [],
+      "exitCode": 0
+    }
+  ]
+}

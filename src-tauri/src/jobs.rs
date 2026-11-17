@@ -59,6 +59,13 @@ fn convert_pdf(engine:&Engine,input:&Path,output:&Path,temp:&Path,options:&Value
  let _=options;Ok(vec![])
 }
 fn gs(engine:&Engine,input:&Path,output:&Path,args:&[String],cancel:&Cancel)->Result<(),String>{let mut cmd=engine.command("gs",&[input],&[output])?;cmd.args(["-dSAFER","-dBATCH","-dNOPAUSE","-dQUIET","-sDEVICE=pdfwrite"]).args(args).arg(format!("-sOutputFile={}",output.display())).arg(input);engine.execute(cmd,cancel,900)?;Ok(())}
+// Merge encoded page streams from disk; do not retain every raster bitmap in MuPDF.
+fn merge_page_files(engine:&Engine,pages:&[PathBuf],output:&Path,temp:&Path,cancel:&Cancel)->Result<(),String>{
+ cancelled(cancel)?;let config=temp.join("page-merge.json");
+ let job=json!({"empty":"","outputFile":output,"keepFilesOpen":"n","pages":pages.iter().map(|p|json!({"file":p,"range":"1-z"})).collect::<Vec<_>>()});
+ fs::write(&config,serde_json::to_vec(&job).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
+ let mut cmd=engine.command("qpdf",&[temp],&[output])?;cmd.arg(format!("--job-json-file={}",config.display()));engine.execute(cmd,cancel,900)?;Ok(())
+}
 fn one(engine:&Engine,tool:&str,inputs:&[PathBuf],output:&Path,temp:&Path,options:&Value,cancel:&Cancel,progress:&dyn Fn(f64,&str))->Result<Vec<String>,String>{
  cancelled(cancel)?;let input=&inputs[0];let password=str_opt(options,"password","");let mut warnings=Vec::new();
  match tool{
@@ -78,7 +85,7 @@ fn one(engine:&Engine,tool:&str,inputs:&[PathBuf],output:&Path,temp:&Path,option
    }
    let mut cmd=engine.command("tesseract",&[&image],&[temp])?;cmd.arg(&image).arg(&base).args(["-l",lang,"--dpi",&dpi.round().to_string(),"--psm","3","pdf"]);engine.execute(cmd,cancel,300)?;pages.push(base.with_extension("pdf"));let _=fs::remove_file(image);progress((i+1)as f64/count as f64*0.9,"Recognizing text");}
   if orientation_uncertain{warnings.push("Orientation could not be determined confidently on some pages; their original direction was preserved. Review those pages.".into());}
-  engine.request(json!({"action":"merge","inputs":pages,"output":output}),cancel)?;warnings.push("OCR rebuilds pages as images with searchable text. Review recognition accuracy; existing interactive forms are not retained.".into());
+  merge_page_files(engine,&pages,output,temp,cancel)?;warnings.push("OCR rebuilds pages as images with searchable text. Review recognition accuracy; existing interactive forms are not retained.".into());
  },
  "to_pdfa"=>{let decrypted=temp.join("input.pdf");engine.request(json!({"action":"unlock","input":input,"password":password,"output":decrypted}),cancel)?;
   let icc=engine.resources.join("runtime/ghostscript/iccprofiles/srgb.icc");if !icc.exists(){return Err("Missing bundled PDF/A color profile".into())}let profile=temp.join("PDFA.ps");let iccstr=icc.to_string_lossy().replace('\\',"\\\\").replace('(',"\\(").replace(')',"\\)");
@@ -90,9 +97,21 @@ fn one(engine:&Engine,tool:&str,inputs:&[PathBuf],output:&Path,temp:&Path,option
   if quality=="lossless"{let mut cmd=engine.command("qpdf",&[&unlocked],&[output])?;cmd.args(["--object-streams=generate","--recompress-flate","--compression-level=9"]).arg(&unlocked).arg(output);engine.execute(cmd,cancel,600)?;}else{let preset=match quality{"screen"=>"/screen","balanced"=>"/ebook","print"=>"/printer",_=>return Err("Invalid compression preset".into())};gs(engine,&unlocked,output,&[format!("-dPDFSETTINGS={preset}")],cancel)?;warnings.push("Lossy compression may change image quality, forms and annotations.".into());}
   if fs::metadata(output).map_err(|e|e.to_string())?.len()>=fs::metadata(input).map_err(|e|e.to_string())?.len(){warnings.push("This document could not be made smaller with the selected preset.".into());}
  },
- "grayscale" if str_opt(options,"colorMode","gray")=="mono"=>{
-  let decrypted=temp.join("mono-input.pdf");engine.request(json!({"action":"unlock","input":input,"password":password,"output":decrypted}),cancel)?;
-  let count=engine.request(json!({"action":"info","input":input,"password":password}),cancel)?["pages"].as_u64().unwrap_or(0)as usize;let selected=selected_pages(str_opt(options,"pages",""),count,true)?;let mut paths=Vec::new();for i in selected{let out=temp.join(format!("mono-{i}.pbm"));let mut cmd=engine.command("mutool",&[&decrypted],&[&out])?;cmd.args(["draw","-F","pbm","-c","mono","-r",&options["dpi"].as_u64().unwrap_or(144).to_string(),"-o"]).arg(&out).arg(&decrypted).arg((i+1).to_string());engine.execute(cmd,cancel,300)?;paths.push(out);}engine.request(json!({"action":"images_pdf","inputs":paths,"output":output}),cancel)?;
+ "rasterize"|"grayscale"=>{
+  let info=engine.request(json!({"action":"info","input":input,"password":password}),cancel)?;
+  let count=info["pages"].as_u64().ok_or("Invalid page count")? as usize;
+  let selected=selected_pages(str_opt(options,"pages",""),count,true)?;let mut pages=Vec::with_capacity(selected.len());
+  let mono=tool=="grayscale"&&str_opt(options,"colorMode","gray")=="mono";
+  let dpi=options["dpi"].as_f64().unwrap_or(144.);
+  // Preflight every selected page before producing large temporary images.
+  for &i in &selected{let b=info["bounds"][i].as_array().ok_or("Missing page bounds")?;let n=|j:usize|b.get(j).and_then(Value::as_f64).unwrap_or(f64::NAN);let pixels=(n(2)-n(0))*(n(3)-n(1))*(dpi/72.).powi(2);if !pixels.is_finite()||pixels>40_000_000.{return Err("Page exceeds render memory limit; reduce DPI".into())}}
+  let decrypted=temp.join("mono-input.pdf");if mono{engine.request(json!({"action":"unlock","input":input,"password":password,"output":decrypted}),cancel)?;}
+  for (index,&page) in selected.iter().enumerate(){cancelled(cancel)?;let dest=temp.join(format!("raster-{index}.pdf"));
+   if mono{let image=temp.join("mono-page.pbm");let mut cmd=engine.command("mutool",&[&decrypted],&[&image])?;cmd.args(["draw","-F","pbm","-c","mono","-r",&dpi.to_string(),"-o"]).arg(&image).arg(&decrypted).arg((page+1).to_string());engine.execute(cmd,cancel,300)?;engine.request(json!({"action":"images_pdf","inputs":[image],"output":dest}),cancel)?;fs::remove_file(image).map_err(|e|e.to_string())?;
+   }else{let mut per=options.clone();per["pages"]=json!((page+1).to_string());engine.request(json!({"action":tool,"input":input,"password":password,"output":dest,"options":per}),cancel)?;}
+   pages.push(dest);progress((index+1)as f64/selected.len()as f64*0.9,"Rendering pages");
+  }
+  merge_page_files(engine,&pages,output,temp,cancel)?;
  },
  _=>{engine.request(json!({"action":tool,"inputs":inputs,"password":password,"output":output,"options":options}),cancel)?;}
  }

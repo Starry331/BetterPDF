@@ -18,15 +18,12 @@ if not (DEST/'office').exists():shutil.copytree(source,DEST/'office',symlinks=Tr
 for pattern in ['Contents/Resources/help','Contents/Resources/readmes']:
  p=DEST/'office'/pattern
  if p.exists():shutil.rmtree(p)
+subprocess.run([sys.executable,str(ROOT/'scripts/trim-office-runtime.py'),str(DEST),'--apply'],check=True)
 gs=ROOT/'work/runtime-build/ghostpdl-10.08.0'
 for name in ['Resource','lib','iccprofiles']:
  shutil.copytree(gs/name,DEST/'ghostscript'/name,dirs_exist_ok=True,symlinks=False)
 tess=DEST/'tessdata';tess.mkdir(exist_ok=True)
-for lang in ['eng','chi_sim','chi_tra','osd']:
- target=tess/(lang+'.traineddata')
- if not target.exists():
-  print('Downloading bundled OCR model:',lang,flush=True)
-  subprocess.run(['curl','-fL','--retry','3','--max-time','120','https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/master/'+lang+'.traineddata','-o',str(target)],check=True)
+subprocess.run([sys.executable,str(ROOT/'scripts/prepare_ocr_models.py')],check=True)
 config=ROOT/'work/runtime-build/tesseract-5.5.4/tessdata/configs'
 if not (tess/'configs').exists():shutil.copytree(config,tess/'configs')
 subprocess.run([sys.executable,str(ROOT/'scripts/runtime-manifest.py')],check=True)

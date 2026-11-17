@@ -1,0 +1,50 @@
+{
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "pdfBytes": 28722006,
+  "pageCount": 1000,
+  "scope": "Native process smoke test only; does not measure total GUI memory or target baseline hardware",
+  "results": [
+    {
+      "name": "open",
+      "seconds": 0.476,
+      "peakProcessBytes": 11419648,
+      "expectedResult": true,
+      "error": null
+    },
+    {
+      "name": "render-0",
+      "seconds": 0.077,
+      "peakProcessBytes": 38862848,
+      "expectedResult": true,
+      "error": null
+    },
+    {
+      "name": "render-499",
+      "seconds": 0.073,
+      "peakProcessBytes": 38879232,
+      "expectedResult": true,
+      "error": null
+    },
+    {
+      "name": "render-999",
+      "seconds": 0.078,
+      "peakProcessBytes": 38879232,
+      "expectedResult": true,
+      "error": null
+    },
+    {
+      "name": "reject-oversized-page",
+      "seconds": 0.043,
+      "peakProcessBytes": 10895360,
+      "expectedResult": true,
+      "error": "Component failed (1): warning: UNHANDLED EXCEPTION!\nlimit error: Page exceeds render memory limit; reduce zoom\nPage exceeds render memory limit; reduce zoom\n"
+    },
+    {
+      "name": "read-after-rejection",
+      "seconds": 0.044,
+      "peakProcessBytes": 36749312,
+      "expectedResult": true,
+      "error": null
+    }
+  ]
+}

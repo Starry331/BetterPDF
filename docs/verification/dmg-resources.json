@@ -1,0 +1,21 @@
+{
+  "app": "DMG/BPDF.app",
+  "passed": true,
+  "verifiedRuntimeFiles": 3886,
+  "bundledFontFiles": 128,
+  "requiredComponents": [
+    "bin/bpdf-render",
+    "bin/mutool",
+    "bin/qpdf",
+    "bin/gs",
+    "bin/tesseract",
+    "office/Contents/MacOS/soffice",
+    "ghostscript/Resource/Init/gs_init.ps",
+    "tessdata/eng.traineddata",
+    "tessdata/chi_sim.traineddata",
+    "tessdata/chi_tra.traineddata",
+    "tessdata/osd.traineddata"
+  ],
+  "errors": [],
+  "scope": "Byte-level runtime manifest, required components and symlink containment; functional offline checks are separate"
+}

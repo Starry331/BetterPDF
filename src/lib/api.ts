@@ -8,11 +8,11 @@ const pageRequests=new Map<string,Promise<PageData>>();
 async function renderPage(id:string,page:number,scale:number,signal?:AbortSignal,thumbnail=false){
  return renderQueue.run(()=>invoke<string>('render_page',{id,page,scale}).then(convertFileSrc),thumbnail?1:0,signal);
 }
-function pageData(id:string,page:number,revision=0,signal?:AbortSignal){
- const key=`${id}:${revision}:${page}`,cached=pageCache.get(key);if(cached)return Promise.resolve(cached);
+function pageData(id:string,page:number,revision=0,signal?:AbortSignal,includeChars=false){
+ const key=`${id}:${revision}:${page}:${includeChars?1:0}`,cached=pageCache.get(key);if(cached)return Promise.resolve(cached);
  // Pending requests are shared only when their lifetime is not tied to a component.
  const pending=pageRequests.get(key);if(pending&&!signal)return pending;
- const request=textQueue.run(()=>invoke<PageData>('page_data',{id,page}),0,signal).then(data=>{pageCache.put(key,data,JSON.stringify(data).length*2);return data;});
+ const request=textQueue.run(()=>invoke<PageData>('page_data',{id,page,includeChars}),0,signal).then(data=>{if(!signal?.aborted)pageCache.put(key,data,JSON.stringify(data).length*2);return data;});
  if(!signal){pageRequests.set(key,request);request.then(()=>pageRequests.delete(key),()=>pageRequests.delete(key));}return request;
 }
 export const api = {

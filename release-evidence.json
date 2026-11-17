@@ -1,0 +1,42 @@
+{
+  "all34SuccessFailureCases": {
+    "passed": true,
+    "report": "docs/verification/tool-matrix.json"
+  },
+  "chineseOCR": {
+    "passed": true,
+    "report": "docs/verification/chineseOCR.json"
+  },
+  "traditionalChineseOCR": {
+    "passed": true,
+    "report": "docs/verification/traditionalChineseOCR.json"
+  },
+  "veraPDFA2b": {
+    "passed": true,
+    "report": "docs/verification/pdfa.json"
+  },
+  "workerFilesystemIsolation": {
+    "passed": true,
+    "report": "docs/verification/isolation.json"
+  },
+  "cajHNCorpus": {
+    "passed": false,
+    "reason": "Multi-fragment/JBIG variants and representative authorized real files are incomplete."
+  },
+  "performanceBaseline": {
+    "passed": false,
+    "reason": "The native smoke benchmark is not M1/8 GB GUI memory, startup or high-refresh acceptance."
+  },
+  "dependencySourceMaterials": {
+    "passed": false,
+    "reason": "Complete redistribution source/build materials are not yet audited."
+  },
+  "officeCompatibility": {
+    "passed": false,
+    "reason": "Complex Office object/table editing and native Office collaboration remain incomplete; 18 core compatibility cases passed."
+  },
+  "macos14CleanInstall": {
+    "passed": false,
+    "reason": "No clean macOS 14 offline installation was available in this environment."
+  }
+}

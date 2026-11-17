@@ -4,7 +4,7 @@
 
 Make PDF better. A lightweight, local-first PDF workspace.
 
-**[Download from Releases](https://github.com/Starry331/BetterPDF/releases)** · [Current development preview](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.3)
+**[Download from Releases](https://github.com/Starry331/BetterPDF/releases)** · [Current development preview](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.4)
 
 The current DMG targets **macOS 14+ on Apple Silicon** and is not Developer ID signed or notarized. Clean macOS 14 installation testing remains pending; Windows is deferred.
 
@@ -13,6 +13,8 @@ The current DMG targets **macOS 14+ on Apple Silicon** and is not Developer ID s
 Read, edit, annotate, convert, and organize PDFs locally. Built with Tauri 2, Svelte 5, TypeScript, Rust, and native MuPDF rendering.
 
 **This is a development preview, not the complete first release.** All 34 tools have processing pipelines and locally verified output samples. This does not establish compatibility with every format, layout, damaged document, or target platform. See [validation status](docs/STATUS.md) for current coverage and limitations.
+
+The DMG includes all runtime engines, OCR models and fonts; no additional component download is needed. Installed size is about **583 MB**. See [stress-test results](docs/PRESSURE_TESTS.md).
 
 ## Development
 

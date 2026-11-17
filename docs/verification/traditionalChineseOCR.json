@@ -1,0 +1,6 @@
+{
+  "scope": "Bundled language model on the synthetic scanned fixture",
+  "case": "OCR Traditional Chinese scanned page",
+  "passed": true,
+  "reportSha256": "69419b0c2676a356de9988f820c34a540f74564bbe70e3e918e16ba94a517f76"
+}

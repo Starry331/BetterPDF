@@ -152,13 +152,13 @@ function watermarkMatches(d,options){var selected=pages(options.pages,d.countPag
 function run(r){
  var o=r.options||{},d,i,p,selected;
  if(r.action==='fixture'){d=new PDFDocument();for(i=0;i<(r.pages||3);i++){var f=d.addSimpleFont(new Font('Helvetica'));d.insertPage(-1,d.addPage([0,0,595,842],0,{Font:{F:f}},'BT /F 24 Tf 50 770 Td (BPDF Test '+(i+1)+') Tj /F 12 Tf 0 -35 Td (Local documents. Real editable text.) Tj ET'));}save(d,r.output);return info(d);}
- if(r.action==='images_pdf'){d=new PDFDocument();for(i=0;i<r.inputs.length;i++){var im=new Image(r.inputs[i]),w=im.getWidth(),h=im.getHeight(),scale=Math.min(1,1440/Math.max(w,h));w*=scale;h*=scale;d.insertPage(-1,d.addPage([0,0,w,h],0,{XObject:{Im:d.addImage(im)}},'q '+w+' 0 0 '+h+' 0 0 cm /Im Do Q'));}save(d,r.output);return {};}
+ if(r.action==='images_pdf'){d=new PDFDocument();for(i=0;i<r.inputs.length;i++){var im=new Image(r.inputs[i]),w=im.getWidth(),h=im.getHeight(),scale=Math.min(1,1440/Math.max(w,h));w*=scale;h*=scale;d.insertPage(-1,d.addPage([0,0,w,h],0,{XObject:{Im:d.addImage(im)}},'q '+w+' 0 0 '+(r.flipVertical&&r.flipVertical[i]?-h:h)+' 0 '+(r.flipVertical&&r.flipVertical[i]?h:0)+' cm /Im Do Q'));}save(d,r.output);return {};}
  d=open(r.input||r.inputs[0],r.password||o.password);
  if(r.action==='info')return info(d);
  if(r.action==='watermark_suggestions')return watermarkSuggestions(d);
  if(r.action==='watermark_candidates'){var index=number(r.page,0,0,d.countPages()-1);return {bounds:d.loadPage(index).getBounds(),candidates:imageCandidates(d,index)};}
  if(r.action==='watermark_matches')return watermarkMatches(d,o);
- if(r.action==='page')return data(d,r.page,r.assetDir,true);
+ if(r.action==='page')return data(d,r.page,r.assetDir,r.includeChars!==false);
  if(r.action==='layout'){var layout=[];for(i=0;i<d.countPages();i++)layout.push(data(d,i,r.assetDir));return {pages:layout};}
  if(r.action==='render'){var sc=number(r.scale,1,0.1,4);checkedPixmap(d.loadPage(r.page),sc,false).saveAsPNG(r.output);return {};}
  if(r.action==='search'){var hits=[];for(i=0;i<d.countPages();i++){var q=d.loadPage(i).toStructuredText().search(r.query);if(q.length)hits.push({page:i,quads:q});}return hits;}

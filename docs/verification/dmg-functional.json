@@ -1,0 +1,16 @@
+{
+  "dmg": "BetterPDF-latest-macOS-arm64.dmg",
+  "scope": "All tool and Office integration fixtures use the read-only DMG runtime; minimal PATH; workers deny network. Not a clean macOS 14 installation or GUI soak test.",
+  "checks": [
+    {
+      "suite": "engine",
+      "passed": true,
+      "log": "work/dmg-engine-tests.log"
+    },
+    {
+      "suite": "office",
+      "passed": true,
+      "log": "work/dmg-office-tests.log"
+    }
+  ]
+}

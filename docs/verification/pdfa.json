@@ -1,0 +1,22 @@
+{
+  "validator": "veraPDF 1.30.3",
+  "profile": "PDF/A-2b",
+  "scope": "Previously validated standard and Chinese PDF/A samples; not every output",
+  "results": [
+    {
+      "sample": "standard",
+      "passed": true,
+      "xmlSha256": "2865c5deb1b258fa440f6963ce5e36ae172510d1e8aaf05c28f6ed24101fd77f"
+    },
+    {
+      "sample": "simplified-chinese",
+      "passed": true,
+      "xmlSha256": "373918931188ad73033f2993cd58b13c1cac0a767a470f7b473315e2f9e5a13b"
+    },
+    {
+      "sample": "traditional-chinese",
+      "passed": true,
+      "xmlSha256": "1a24632a2cc5eeb3c98dccc7bb06d4e72201058a84e50b5a7eeaa57538350789"
+    }
+  ]
+}

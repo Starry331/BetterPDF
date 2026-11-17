@@ -1,0 +1,96 @@
+{
+  "scope": "Implemented compatibility operations; full requested Office scope remains incomplete",
+  "testSourceSha256": "2eec5057fab3fc8248243e1a4ebab619f1fe4b84d420e7b8ca9e57a6c39e23ad",
+  "results": [
+    {
+      "name": "docx: native content editing, preview, save, reopen, undo/redo",
+      "ok": true,
+      "ms": 8341
+    },
+    {
+      "name": "pptx: native content editing, preview, save, reopen, undo/redo",
+      "ok": true,
+      "ms": 8475
+    },
+    {
+      "name": "xlsx: native content editing, preview, save, reopen, undo/redo",
+      "ok": true,
+      "ms": 8444
+    },
+    {
+      "name": "docx: multiline font and color survive reopen and real preview",
+      "ok": true,
+      "ms": 5431
+    },
+    {
+      "name": "pptx: multiline font and color survive reopen and real preview",
+      "ok": true,
+      "ms": 5603
+    },
+    {
+      "name": "docx: insert paragraph, preview and undo/redo",
+      "ok": true,
+      "ms": 4121
+    },
+    {
+      "name": "pptx: reorder slides preserves objects, preview and history",
+      "ok": true,
+      "ms": 4279
+    },
+    {
+      "name": "pptx: duplicate and delete slides survive preview, reopen and history",
+      "ok": true,
+      "ms": 10093
+    },
+    {
+      "name": "pptx: blank slide and independent editable text box survive preview and history",
+      "ok": true,
+      "ms": 8598
+    },
+    {
+      "name": "docx: paragraph alignment changes real layout and supports undo",
+      "ok": true,
+      "ms": 5496
+    },
+    {
+      "name": "docx: delete inserted paragraph, reopen and undo/redo",
+      "ok": true,
+      "ms": 5470
+    },
+    {
+      "name": "docx: numbered list continues on insertion and can be removed",
+      "ok": true,
+      "ms": 15043
+    },
+    {
+      "name": "xlsx: isolated cell styling and numeric format survive real preview and reopen",
+      "ok": true,
+      "ms": 5583
+    },
+    {
+      "name": "xlsx: local SUM formula recalculates in real preview",
+      "ok": true,
+      "ms": 4196
+    },
+    {
+      "name": "xlsx: insert addressed cell and verify recalculated preview",
+      "ok": true,
+      "ms": 5584
+    },
+    {
+      "name": "doc: automatic modern-format compatibility mode",
+      "ok": true,
+      "ms": 3137
+    },
+    {
+      "name": "xls: automatic modern-format compatibility mode",
+      "ok": true,
+      "ms": 3245
+    },
+    {
+      "name": "ppt: automatic modern-format compatibility mode",
+      "ok": true,
+      "ms": 3284
+    }
+  ]
+}

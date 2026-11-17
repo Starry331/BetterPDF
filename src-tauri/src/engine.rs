@@ -95,6 +95,14 @@ pub fn selected_pages(spec:&str,count:usize,allow_all:bool)->Result<Vec<usize>,S
 mod process_tests {
  use super::*;
  #[test]
+ fn worker_crash_is_reported_and_next_request_succeeds() {
+  let engine=Engine{resources:PathBuf::new()};let cancel=fresh_cancel();
+  let mut command=Command::new("/bin/sh");command.args(["-c","kill -KILL $$"]);
+  assert!(engine.execute(command,&cancel,5).unwrap_err().contains("Component failed"));
+  let mut healthy=Command::new("/usr/bin/printf");healthy.arg("ready");
+  assert_eq!(engine.execute(healthy,&cancel,5).unwrap(),"ready");
+ }
+ #[test]
  fn cancellation_stops_running_process_promptly() {
   use std::os::unix::process::CommandExt;
   let engine=Engine{resources:PathBuf::new()};let cancel=fresh_cancel();let signal=cancel.clone();
