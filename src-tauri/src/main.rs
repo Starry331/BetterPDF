@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-mod office;mod native_menu;mod collaboration;mod engine;mod documents;mod jobs;mod export;mod caj;
+mod office;mod native_icon;mod native_menu;mod collaboration;mod engine;mod documents;mod jobs;mod export;mod caj;
 use engine::{Engine,Cancel,fresh_cancel};
 use documents::{Session,SessionView};
 use jobs::Task;
@@ -61,6 +61,7 @@ async fn open_document(state:State<'_,AppState>,path:String,password:String)->Re
 #[tauri::command]fn launch_files()->Vec<String>{std::env::args().skip(1).filter(|s|(s.to_lowercase().ends_with(".pdf")||office::supported(std::path::Path::new(s)))&&std::path::Path::new(s).is_file()).collect()}
 fn main(){
  let app=tauri::Builder::default().plugin(tauri_plugin_dialog::init()).plugin(tauri_plugin_opener::init()).setup(|app|{
+  #[cfg(target_os="macos")] native_icon::install().map_err(std::io::Error::other)?;
   let resources=if cfg!(debug_assertions){PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources")}else{app.path().resource_dir()?.join("resources")};let engine=Engine{resources};let cache=app.path().app_cache_dir()?.join(uuid::Uuid::new_v4().to_string());std::fs::create_dir_all(&cache)?;
   let (tx,rx)=mpsc::channel::<Job>();let tasks:Arc<Mutex<Vec<Task>>>=Arc::new(Mutex::new(Vec::new()));let worker_tasks=tasks.clone();let worker_engine=engine.clone();let handle=app.handle().clone();
   std::thread::spawn(move||{for job in rx{let last_update=Mutex::new(std::time::Instant::now()-std::time::Duration::from_secs(1));let update=|progress:f64,message:&str|{let mut last=last_update.lock();if last.elapsed()<std::time::Duration::from_millis(100){return}*last=std::time::Instant::now();let mut tasks=worker_tasks.lock();if let Some(t)=tasks.iter_mut().find(|t|t.id==job.id){t.state="running".into();t.progress=progress;t.message=message.into();let _=handle.emit("task-updated",t.clone());}};update(0.01,"Processing locally");let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||jobs::run(&worker_engine,&job.tool,&job.inputs,&job.output,&job.options,&job.cancel,&update))).unwrap_or_else(|_|Err("Task worker failed".into()));let mut tasks=worker_tasks.lock();if let Some(t)=tasks.iter_mut().find(|t|t.id==job.id){match result{Ok((outputs,warnings))=>{t.state="completed".into();t.progress=1.;t.message="Completed".into();t.outputs=outputs;t.warnings=warnings},Err(e)=>{t.state=if e=="CANCELLED"{"cancelled"}else{"failed"}.into();t.message=e;}}let _=handle.emit("task-updated",t.clone());}drop(tasks);handle.state::<AppState>().cancels.lock().remove(&job.id);}});

@@ -4,7 +4,7 @@
 
 Make PDF better. A lightweight, local-first PDF workspace.
 
-**[Download from Releases](https://github.com/Starry331/BetterPDF/releases)** · [Current development preview](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.4)
+**[Download from Releases](https://github.com/Starry331/BetterPDF/releases)** · [Current development preview](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.5)
 
 The current DMG targets **macOS 14+ on Apple Silicon** and is not Developer ID signed or notarized. Clean macOS 14 installation testing remains pending; Windows is deferred.
 

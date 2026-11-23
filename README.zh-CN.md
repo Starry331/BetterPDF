@@ -2,7 +2,7 @@
 
 [English](README.md) · **简体中文**
 
-**[下载安装包（GitHub Releases）](https://github.com/Starry331/BetterPDF/releases)** · [当前开发预览版](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.4)
+**[下载安装包（GitHub Releases）](https://github.com/Starry331/BetterPDF/releases)** · [当前开发预览版](https://github.com/Starry331/BetterPDF/releases/tag/v0.1.0-dev.5)
 
 当前 DMG 构建目标为 **macOS 14+ / Apple Silicon**，尚未经过 Developer ID 签名公证。干净 macOS 14 系统的安装验证仍待完成；Windows 版本暂缓。
 

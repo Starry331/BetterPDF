@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Verify all manifest resources and ensure packaged symlinks stay inside the app."""
 import argparse, hashlib, json
+from bundle_icon import check_app_icon
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('app',type=Path);p.add_argument('--report',type=Path,required=True);a=p.parse_args()
 app=a.app.resolve();resources=app/'Contents/Resources/resources';runtime=resources/'runtime'
 manifest=json.loads((runtime/'manifest.json').read_text());errors=[]
+icon_name, icon_errors=check_app_icon(app,Path(__file__).resolve().parents[1]/'src-tauri/icons/icon.icns')
+errors.extend(icon_errors)
 for item in manifest['files']:
     path=runtime/item['path']
     if not path.resolve().is_relative_to(runtime) or not path.is_file():errors.append('Missing/escaping: '+item['path']);continue
@@ -21,5 +24,5 @@ for relative in ['engine/worker.js']:
     if not (resources/relative).is_file():errors.append('Application engine missing: '+relative)
 fonts=list((runtime/'office').rglob('*.ttf'))+list((runtime/'office').rglob('*.otf'))
 if not fonts:errors.append('No bundled Office fonts')
-report={'app':str(app),'passed':not errors,'verifiedRuntimeFiles':len(manifest['files']),'bundledFontFiles':len(fonts),'requiredComponents':required,'errors':errors,'scope':'Byte-level runtime manifest, required components and symlink containment; functional offline checks are separate'}
+report={'app':str(app),'passed':not errors,'applicationIcon':icon_name,'verifiedRuntimeFiles':len(manifest['files']),'bundledFontFiles':len(fonts),'requiredComponents':required,'errors':errors,'scope':'Byte-level runtime manifest, required components and symlink containment; functional offline checks are separate'}
 a.report.parent.mkdir(parents=True,exist_ok=True);a.report.write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2));raise SystemExit(bool(errors))
