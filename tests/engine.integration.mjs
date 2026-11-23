@@ -2,7 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {mkdirSync,writeFileSync,readFileSync,existsSync,readdirSync,statSync,openSync,closeSync,writeSync} from 'node:fs';
 import {resolve,join} from 'node:path';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
 const root=resolve(import.meta.dirname,'..'),run=join(root,'work','integration-'+Date.now());mkdirSync(run,{recursive:true});
-const cli=process.env.BPDF_TEST_CLI||join(root,'src-tauri/target/debug/bpdf-cli'),mutool=join(process.env.BPDF_RESOURCES||join(root,'src-tauri/resources'),'runtime/bin/mutool');let seq=0;const results=[];
+const cli=process.env.BPDF_TEST_CLI||join(root,'src-tauri/target/debug/bpdf-cli'+(process.platform==='win32'?'.exe':'')),mutool=join(process.env.BPDF_RESOURCES||join(root,'src-tauri/resources'),'runtime/bin/mutool'+(process.platform==='win32'?'.exe':''));let seq=0;const results=[];
 function request(req){const f=join(run,'request-'+seq+++'.json');writeFileSync(f,JSON.stringify(req));const start=performance.now();const p=spawnSync(cli,[f],{encoding:'utf8',timeout:180000,cwd:root});let parsed;try{parsed=JSON.parse(p.stdout.trim());}catch{throw Error(p.stderr||p.error||p.stdout)}if(!parsed.ok)throw Error(parsed.error);return {data:parsed.result,ms:performance.now()-start};}
 function job(tool,inputs,options={},suffix='pdf'){const output=join(run,tool+'-'+seq+(suffix?'.'+suffix:''));return {...request({mode:'job',tool,inputs,output,options}),output};}
 function info(path,password=''){return request({action:'info',input:path,password}).data;}

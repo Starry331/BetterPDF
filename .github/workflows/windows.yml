@@ -1,0 +1,76 @@
+name: Windows offline installer
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: actions/cache@v4
+        with:
+          path: work/windows/LibreOffice.msi
+          key: libreoffice-windows-26.8.3-0e6918c2
+      - uses: msys2/setup-msys2@v2
+        id: msys2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-mupdf-tools
+            mingw-w64-ucrt-x86_64-libmupdf
+            mingw-w64-ucrt-x86_64-qpdf
+            mingw-w64-ucrt-x86_64-ghostscript
+            mingw-w64-ucrt-x86_64-tesseract-ocr
+      - name: Assemble offline runtime
+        run: python scripts/prepare-windows.py --msys '${{ steps.msys2.outputs.msys2-location }}'
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:ui
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml -- --ignored
+      - run: cargo build --locked --manifest-path src-tauri/Cargo.toml --bin bpdf-cli
+      - name: PDF and Office integration
+        run: |
+          $env:BPDF_RESOURCES = "$pwd/src-tauri/resources"
+          node tests/engine.integration.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node tests/office.integration.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $env:BPDF_TEST_LEGACY = '1'
+          node tests/office.integration.mjs
+          exit $LASTEXITCODE
+      - name: Build offline installer
+        run: npx tauri build --config src-tauri/tauri.windows.conf.json --bundles nsis
+      - name: Verify installed resources and Unicode paths
+        run: python scripts/test-windows-install.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-x64-evidence
+          path: |
+            work/*results.json
+            work/windows/*.json
+            work/windows/*.log
+            src-tauri/resources/runtime/manifest.json
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetterPDF-windows-x64
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 14

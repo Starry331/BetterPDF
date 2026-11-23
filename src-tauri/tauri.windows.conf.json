@@ -1,0 +1,4 @@
+{
+  "app": {"windows": [{"title":"BPDF","width":1280,"height":850,"minWidth":880,"minHeight":600,"decorations":true,"closable":true,"minimizable":true,"maximizable":true}]},
+  "bundle": {"targets":["nsis"],"windows":{"webviewInstallMode":{"type":"offlineInstaller"},"nsis":{"installMode":"currentUser","languages":["English","SimpChinese"],"displayLanguageSelector":true,"compression":"lzma"}}}
+}

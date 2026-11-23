@@ -4,10 +4,10 @@ import {resolve,join} from 'node:path';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 const root=resolve(import.meta.dirname,'..'),run=process.env.BPDF_TEST_LEGACY?JSON.parse(readFileSync(join(root,'work/office-integration-results.json'),'utf8')).run:join(root,'work','office-'+Date.now());mkdirSync(run,{recursive:true});
-const cli=process.env.BPDF_TEST_CLI||join(root,'src-tauri/target/debug/bpdf-cli'),runtime=join(process.env.BPDF_RESOURCES||join(root,'src-tauri/resources'),'runtime/bin');let seq=0;const results=[];
+const cli=process.env.BPDF_TEST_CLI||join(root,'src-tauri/target/debug/bpdf-cli'+(process.platform==='win32'?'.exe':'')),runtime=join(process.env.BPDF_RESOURCES||join(root,'src-tauri/resources'),'runtime/bin');let seq=0;const results=[];
 function request(req){const file=join(run,`request-${seq++}.json`);writeFileSync(file,JSON.stringify(req));const p=spawnSync(cli,[file],{encoding:'utf8',timeout:360000});if(p.error||p.signal)throw Error(`Office worker stopped: ${p.error||p.signal}; ${p.stderr||''}`);let v;try{v=JSON.parse(p.stdout||'{}');}catch(e){throw Error(`Invalid worker response (${Buffer.byteLength(p.stdout||'')} bytes, exit ${p.status}): ${e.message}; ${p.stderr||''}`);}if(p.status!==0||!v.ok)throw Error(v.error||p.stderr||`Worker exited ${p.status}`);return v.result;}
 function test(name,fn){const start=performance.now();try{fn();results.push({name,ok:true,ms:Math.round(performance.now()-start)});console.log('PASS',name);}catch(e){results.push({name,ok:false,error:String(e)});console.log('FAIL',name,String(e));}}
-const sample=join(run,'sample.pdf');assert.equal(spawnSync(join(runtime,'mutool'),['run',join(root,'tests/fixtures.js'),sample]).status,0);
+const sample=join(run,'sample.pdf');assert.equal(spawnSync(join(runtime,'mutool'+(process.platform==='win32'?'.exe':'')),['run',join(root,'tests/fixtures.js'),sample]).status,0);
 for(const fmt of (process.env.BPDF_TEST_LEGACY?[]:['docx','pptx','xlsx']))test(`${fmt}: native content editing, preview, save, reopen, undo/redo`,()=>{
  const input=join(run,`source.${fmt}`),output=join(run,`edited.${fmt}`),preview=join(run,`edited-${fmt}.pdf`);
  request({mode:'job',tool:'to_'+fmt,inputs:[sample],output:input,options:{}});

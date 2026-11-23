@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 int bpdf_render(const char *input,const char *password,int index,float scale,const char *output,char *error,size_t error_len){
  fz_context *ctx=fz_new_context(NULL,NULL,64*1024*1024);
  if(!ctx){snprintf(error,error_len,"Cannot allocate PDF context");return 1;}
@@ -23,8 +26,26 @@ int bpdf_render(const char *input,const char *password,int index,float scale,con
  fz_catch(ctx){snprintf(error,error_len,"%s",fz_caught_message(ctx));result=1;}
  fz_drop_context(ctx);return result;
 }
-int main(int argc,char **argv){
+static int run(int argc,char **argv){
  if(argc!=6){fprintf(stderr,"Expected input, password-file, page, scale, output\n");return 2;}
- char password[4096]={0},error[512]={0};FILE *f=fopen(argv[2],"rb");if(!f)return 2;size_t n=fread(password,1,sizeof(password)-1,f);fclose(f);password[n]=0;
+ char password[4096]={0},error[512]={0};FILE *f=fz_fopen_utf8(argv[2],"rb");if(!f)return 2;size_t n=fread(password,1,sizeof(password)-1,f);fclose(f);password[n]=0;
  int code=bpdf_render(argv[1],password,atoi(argv[3]),strtof(argv[4],NULL),argv[5],error,sizeof(error));memset(password,0,sizeof(password));if(code)fprintf(stderr,"%s\n",error);return code;
 }
+
+#ifdef _WIN32
+int wmain(int argc, wchar_t **wide) {
+ char **argv=calloc((size_t)argc+1,sizeof(char *));
+ if(!argv)return 2;
+ for(int i=0;i<argc;i++){
+  int size=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,wide[i],-1,NULL,0,NULL,NULL);
+  if(!size){for(int j=0;j<i;j++)free(argv[j]);free(argv);return 2;}
+  argv[i]=malloc((size_t)size);
+  if(!argv[i]){for(int j=0;j<i;j++)free(argv[j]);free(argv);return 2;}
+  WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,wide[i],-1,argv[i],size,NULL,NULL);
+ }
+ int result=run(argc,argv);
+ for(int i=0;i<argc;i++)free(argv[i]);free(argv);return result;
+}
+#else
+int main(int argc,char **argv){return run(argc,argv);}
+#endif

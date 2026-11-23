@@ -8,7 +8,7 @@ DEST.mkdir(parents=True,exist_ok=True)
 BIN=DEST/'bin';LIB=DEST/'lib';NOTICE=DEST/'licenses'
 for p in [BIN,LIB,NOTICE]:p.mkdir(exist_ok=True)
 if sys.platform!='darwin':
- raise SystemExit('Use scripts/prepare-windows.ps1 for Windows runtime assembly.')
+ raise SystemExit('Use scripts/prepare-windows.py --msys <MSYS2 root> for Windows runtime assembly.')
 # Native workers always come from checksum-pinned source builds.
 subprocess.run([sys.executable,str(ROOT/'scripts/build-native-macos.py'),'--install'],check=True)
 source=Path(os.environ.get('BPDF_OFFICE_SOURCE','/Applications/LibreOffice.app'))

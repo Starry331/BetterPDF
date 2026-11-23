@@ -125,6 +125,7 @@ mod tests {
 mod preview_tests {
  use super::*;
  #[test]
+ #[ignore = "requires bundled native runtime"]
  fn edit_preview_preserves_document_and_reports_overflow() {
   let cache=tempfile::tempdir().unwrap();
   let engine=Engine{resources:PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources")};

@@ -3,7 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
-import subprocess
+import subprocess, sys
 
 root = Path(__file__).resolve().parents[1]
 runtime = root / 'src-tauri/resources/runtime'
@@ -15,12 +15,12 @@ for path in sorted(runtime.rglob('*')):
     with path.open('rb') as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b''):
             digest.update(block)
-    files.append({'path': str(path.relative_to(runtime)), 'bytes': path.stat().st_size, 'sha256': digest.hexdigest()})
+    files.append({'path': path.relative_to(runtime).as_posix(), 'bytes': path.stat().st_size, 'sha256': digest.hexdigest()})
 versions = {}
 for name, flag in [('mutool', '-v'), ('qpdf', '--version'), ('gs', '--version'), ('tesseract', '--version')]:
-    result = subprocess.run([str(runtime / 'bin' / name), flag], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+    result = subprocess.run([str(runtime / 'bin' / (name + ('.exe' if sys.platform == 'win32' else ''))), flag], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
     versions[name] = result.stdout.splitlines()[0]
-manifest = {'platform': 'macos-arm64', 'components': versions,
+manifest = {'platform': 'windows-x64' if sys.platform == 'win32' else 'macos-arm64', 'components': versions,
             'nativeSources': json.loads((root / 'scripts/native-sources.json').read_text()),
             'files': files, 'totalBytes': sum(item['bytes'] for item in files)}
 (runtime / 'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False))

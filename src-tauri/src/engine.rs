@@ -19,6 +19,7 @@ impl Engine {
   c.env("BPDF_SCOPE_READ",serde_json::to_string(read).map_err(|e|e.to_string())?);
   c.env("BPDF_SCOPE_WRITE",serde_json::to_string(write).map_err(|e|e.to_string())?);
   c.env("TESSDATA_PREFIX",self.resources.join("runtime/tessdata"));c.env("GS_LIB",std::env::join_paths([self.resources.join("runtime/ghostscript/Resource/Init"),self.resources.join("runtime/ghostscript/lib"),self.resources.join("runtime/ghostscript/Resource/Font"),self.resources.join("runtime/ghostscript/fonts")]).map_err(|e|e.to_string())?);c.env("OMP_THREAD_LIMIT","2");
+  #[cfg(target_os="macos")]
   if name=="soffice"{let fonts=self.resources.join("runtime/office/Contents/Resources/fontconfig");c.env("FONTCONFIG_FILE",fonts.join("fonts.conf")).env("FONTCONFIG_PATH",fonts);}
   #[cfg(unix)] {use std::os::unix::process::CommandExt;c.process_group(0);}
   #[cfg(windows)]{use std::os::windows::process::CommandExt;c.creation_flags(0x08000000);}
@@ -37,7 +38,7 @@ impl Engine {
    if let Some(dir)=cmd.get_current_dir(){wrapped.current_dir(dir);}
    use std::os::unix::process::CommandExt;wrapped.process_group(0);cmd=wrapped;
   }
-  cmd.env_remove("BPDF_SCOPE_READ").env_remove("BPDF_SCOPE_WRITE").env("TMPDIR",private_temp.path()).env("XDG_CACHE_HOME",private_temp.path());
+  cmd.env_remove("BPDF_SCOPE_READ").env_remove("BPDF_SCOPE_WRITE").env("TEMP",private_temp.path()).env("TMP",private_temp.path()).env("TMPDIR",private_temp.path()).env("XDG_CACHE_HOME",private_temp.path());
   cmd.stdin(Stdio::null()).stdout(out.reopen().map_err(|e|e.to_string())?).stderr(err.reopen().map_err(|e|e.to_string())?);
   let mut child=cmd.spawn().map_err(|e|e.to_string())?;let started=Instant::now();
   let status=loop{let output_exceeded=out.as_file().metadata().map(|m|m.len()>32*1024*1024).unwrap_or(false)||err.as_file().metadata().map(|m|m.len()>8*1024*1024).unwrap_or(false);if cancel.load(Ordering::Relaxed)||started.elapsed().as_secs()>timeout||output_exceeded{
