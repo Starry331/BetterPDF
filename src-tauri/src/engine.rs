@@ -40,10 +40,13 @@ impl Engine {
   }
   cmd.env_remove("BPDF_SCOPE_READ").env_remove("BPDF_SCOPE_WRITE").env("TEMP",private_temp.path()).env("TMP",private_temp.path()).env("TMPDIR",private_temp.path()).env("XDG_CACHE_HOME",private_temp.path());
   cmd.stdin(Stdio::null()).stdout(out.reopen().map_err(|e|e.to_string())?).stderr(err.reopen().map_err(|e|e.to_string())?);
-  let mut child=cmd.spawn().map_err(|e|e.to_string())?;let started=Instant::now();
+  let mut child=cmd.spawn().map_err(|e|e.to_string())?;
+  #[cfg(windows)]
+  let _job=match windows_job::Job::attach(&child){Ok(job)=>job,Err(error)=>{let _=child.kill();let _=child.wait();return Err(error)}};
+  let started=Instant::now();
   let status=loop{let output_exceeded=out.as_file().metadata().map(|m|m.len()>32*1024*1024).unwrap_or(false)||err.as_file().metadata().map(|m|m.len()>8*1024*1024).unwrap_or(false);if cancel.load(Ordering::Relaxed)||started.elapsed().as_secs()>timeout||output_exceeded{
    #[cfg(unix)] unsafe {libc::kill(-(child.id() as i32),libc::SIGKILL);}
-   #[cfg(windows)]{use std::os::windows::process::CommandExt;let _=Command::new("taskkill").args(["/PID",&child.id().to_string(),"/T","/F"]).creation_flags(0x08000000).status();}
+   #[cfg(windows)] _job.terminate();
    let _=child.kill();let _=child.wait();return Err(if cancel.load(Ordering::Relaxed){"CANCELLED"}else if output_exceeded{"Component output exceeded safety limit"}else{"Operation timed out"}.into());
   }if let Some(s)=child.try_wait().map_err(|e|e.to_string())?{break s;}thread::sleep(Duration::from_millis(30));};
   let mut stdout=String::new();out.seek(SeekFrom::Start(0)).map_err(|e|e.to_string())?;out.take(32*1024*1024).read_to_string(&mut stdout).map_err(|e|e.to_string())?;
@@ -136,4 +139,26 @@ mod isolation_tests {
   assert!(engine.execute(command,&fresh_cancel(),30).unwrap().contains("isolation passed"));
   assert_eq!(fs::read(&output).unwrap(),b"selected content");assert!(!forbidden.exists());
  }
+}
+
+// Own the whole worker tree: cancellation, timeout and parent exit must not
+// leave soffice.bin or OCR children behind. This is not a filesystem sandbox.
+#[cfg(windows)]
+mod windows_job {
+ use std::{mem::size_of,os::windows::io::AsRawHandle,process::Child};
+ use windows_sys::Win32::{Foundation::{CloseHandle,HANDLE},System::JobObjects::*};
+ pub struct Job(HANDLE);
+ impl Job {
+  pub fn attach(child:&Child)->Result<Self,String>{unsafe{
+   let handle=CreateJobObjectW(std::ptr::null(),std::ptr::null());
+   if handle.is_null(){return Err(std::io::Error::last_os_error().to_string())}
+   let job=Self(handle);let mut limits:JOBOBJECT_EXTENDED_LIMIT_INFORMATION=std::mem::zeroed();
+   limits.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE|JOB_OBJECT_LIMIT_JOB_MEMORY;
+   limits.JobMemoryLimit=1536*1024*1024;
+   if SetInformationJobObject(handle,JobObjectExtendedLimitInformation,&limits as *const _ as *const _,size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32)==0||AssignProcessToJobObject(handle,child.as_raw_handle() as HANDLE)==0{return Err(std::io::Error::last_os_error().to_string())}
+   Ok(job)
+  }}
+  pub fn terminate(&self){unsafe{TerminateJobObject(self.0,1);}}
+ }
+ impl Drop for Job{fn drop(&mut self){unsafe{CloseHandle(self.0);}}}
 }

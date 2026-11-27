@@ -2,7 +2,7 @@
 """Assemble native Windows x64 workers and an offline, relocatable Office runtime.
 Only used on the build machine; the installed app never runs this script.
 """
-import argparse, hashlib, json, os, re, shutil, subprocess, sys, urllib.request
+import argparse, hashlib, json, os, re, shutil, subprocess, sys, tarfile, urllib.request
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 RUNTIME=ROOT/'src-tauri/resources/runtime'
@@ -21,6 +21,7 @@ def main():
     if sys.platform!='win32':raise SystemExit('Run on Windows x64 with MSYS2 UCRT64 tools.')
     parser=argparse.ArgumentParser();parser.add_argument('--msys',type=Path,required=True);a=parser.parse_args()
     prefix=a.msys/'ucrt64';bin=prefix/'bin';dest=RUNTIME/'bin';dest.mkdir(parents=True,exist_ok=True)
+    os.environ['PATH']=str(bin)+os.pathsep+os.environ['PATH']
     # Resolve only actual PE imports. No build tools or MSYS POSIX runtime ship.
     available={p.name.lower():p for p in bin.glob('*') if p.is_file()}
     copied=set()
@@ -43,6 +44,21 @@ def main():
     for name in ['Resource','lib','iccprofiles']:
         source=gs/name
         if source.is_dir():copy_tree(source,RUNTIME/'ghostscript'/name)
+    # MSYS2 embeds PostScript resources in its executable; bundle pinned profiles
+    # explicitly so PDF/A does not depend on the build-machine installation.
+    spec=next(x for x in json.loads((ROOT/'scripts/native-sources.json').read_text()) if x['directory'].startswith('ghostpdl-'))
+    archive=WORK/spec['archive']
+    if not archive.exists():
+        with urllib.request.urlopen(spec['url'],timeout=120) as response,archive.open('wb') as f:shutil.copyfileobj(response,f)
+    if digest(archive)!=spec['sha256']:raise RuntimeError('Ghostscript source checksum mismatch')
+    with tarfile.open(archive) as tar:
+        for member in tar:
+            parts=Path(member.name).parts
+            if member.isfile() and len(parts)>2 and parts[0]==spec['directory'] and parts[1] in ('Resource','iccprofiles'):
+                target=RUNTIME/'ghostscript'/Path(*parts[1:])
+                if not target.resolve().is_relative_to((RUNTIME/'ghostscript').resolve()):raise RuntimeError('Unsafe archive path')
+                target.parent.mkdir(parents=True,exist_ok=True)
+                with tar.extractfile(member) as source,target.open('wb') as output:shutil.copyfileobj(source,output)
     if not (RUNTIME/'ghostscript/iccprofiles/srgb.icc').is_file():raise RuntimeError('Missing PDF/A color profile')
     copy_tree(prefix/'share/tessdata/configs',RUNTIME/'tessdata/configs')
     run(sys.executable,ROOT/'scripts/prepare_ocr_models.py')
