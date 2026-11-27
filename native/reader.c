@@ -28,7 +28,13 @@ int bpdf_render(const char *input,const char *password,int index,float scale,con
 }
 static int run(int argc,char **argv){
  if(argc!=6){fprintf(stderr,"Expected input, password-file, page, scale, output\n");return 2;}
- char password[4096]={0},error[512]={0};FILE *f=fz_fopen_utf8(argv[2],"rb");if(!f)return 2;size_t n=fread(password,1,sizeof(password)-1,f);fclose(f);password[n]=0;
+ char password[4096]={0},error[512]={0};FILE *f;
+#ifdef _WIN32
+ f=fz_fopen_utf8(argv[2],"rb");
+#else
+ f=fopen(argv[2],"rb");
+#endif
+ if(!f)return 2;size_t n=fread(password,1,sizeof(password)-1,f);fclose(f);password[n]=0;
  int code=bpdf_render(argv[1],password,atoi(argv[3]),strtof(argv[4],NULL),argv[5],error,sizeof(error));memset(password,0,sizeof(password));if(code)fprintf(stderr,"%s\n",error);return code;
 }
 
