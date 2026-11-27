@@ -3,6 +3,7 @@ import {mkdirSync,writeFileSync,readFileSync,statSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {pathToFileURL} from 'node:url';
 const root=resolve(import.meta.dirname,'..'),run=process.env.BPDF_TEST_LEGACY?JSON.parse(readFileSync(join(root,'work/office-integration-results.json'),'utf8')).run:join(root,'work','office-'+Date.now());mkdirSync(run,{recursive:true});
 const cli=process.env.BPDF_TEST_CLI||join(root,'src-tauri/target/debug/bpdf-cli'+(process.platform==='win32'?'.exe':'')),runtime=join(process.env.BPDF_RESOURCES||join(root,'src-tauri/resources'),'runtime/bin');let seq=0;const results=[];
 function request(req){const file=join(run,`request-${seq++}.json`);writeFileSync(file,JSON.stringify(req));const p=spawnSync(cli,[file],{encoding:'utf8',timeout:360000});if(p.error||p.signal)throw Error(`Office worker stopped: ${p.error||p.signal}; ${p.stderr||''}`);let v;try{v=JSON.parse(p.stdout||'{}');}catch(e){throw Error(`Invalid worker response (${Buffer.byteLength(p.stdout||'')} bytes, exit ${p.status}): ${e.message}; ${p.stderr||''}`);}if(p.status!==0||!v.ok)throw Error(v.error||p.stderr||`Worker exited ${p.status}`);return v.result;}
@@ -103,8 +104,8 @@ if(!process.env.BPDF_TEST_LEGACY)test('xlsx: insert addressed cell and verify re
  const input=join(run,'source.xlsx'),output=join(run,'inserted.xlsx');const before=request({mode:'office',input});const part=before.before.parts[0];const r=request({mode:'office',input,output,item:100000,text:'=SUM(10,20)',kind:'formula',style:{part,address:'Z100'}});const reopened=request({mode:'office',input:output});assert(reopened.before.total>before.before.total);assert(r.document.pages>0);
 });
 for(const [modern,legacy]of [['docx','doc'],['xlsx','xls'],['pptx','ppt']])test(`${legacy}: automatic modern-format compatibility mode`,()=>{
- const profile=new URL('file://'+join(run,`legacy-profile-${legacy}`)).href;
- const p=spawnSync(join(runtime,'../office/Contents/MacOS/soffice'),[`-env:UserInstallation=${profile}`,'--headless','--convert-to',legacy,'--outdir',run,join(run,`source.${modern}`)],{encoding:'utf8',timeout:120000});assert.equal(p.status,0,p.stderr);
+ const profile=pathToFileURL(join(run,`legacy-profile-${legacy}`)).href;
+ const p=spawnSync(join(runtime,process.platform==='win32'?'../office/program/soffice.com':'../office/Contents/MacOS/soffice'),[`-env:UserInstallation=${profile}`,'--headless','--convert-to',legacy,'--outdir',run,join(run,`source.${modern}`)],{encoding:'utf8',timeout:120000});assert.equal(p.status,0,p.stderr);
  const result=request({mode:'office',input:join(run,`source.${legacy}`)});assert.equal(result.document.format,modern);assert(result.before.items.length>0);
 });
 writeFileSync(join(root,'work/office-integration-results.json'),JSON.stringify({run,results},null,2));if(results.some(r=>!r.ok))process.exit(1);

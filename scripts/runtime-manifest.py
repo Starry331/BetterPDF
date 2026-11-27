@@ -21,7 +21,7 @@ for name, flag in [('mutool', '-v'), ('qpdf', '--version'), ('gs', '--version'),
     result = subprocess.run([str(runtime / 'bin' / (name + ('.exe' if sys.platform == 'win32' else ''))), flag], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
     versions[name] = result.stdout.splitlines()[0]
 manifest = {'platform': 'windows-x64' if sys.platform == 'win32' else 'macos-arm64', 'components': versions,
-            'nativeSources': json.loads((root / 'scripts/native-sources.json').read_text()),
+            'nativeSources': json.loads((runtime / 'licenses/windows-provenance.json').read_text()) if sys.platform == 'win32' else json.loads((root / 'scripts/native-sources.json').read_text()),
             'files': files, 'totalBytes': sum(item['bytes'] for item in files)}
 (runtime / 'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
 print(f'Runtime manifest: {len(files)} files, {manifest["totalBytes"] / 1_000_000:.2f} MB')

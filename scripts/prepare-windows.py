@@ -39,6 +39,8 @@ def main():
     for name in ['mutool.exe','qpdf.exe','gs.exe','tesseract.exe']:copy_binary(bin/name)
     run(bin/'gcc.exe','-O2','-s','-municode','-I'+str(prefix/'include'),ROOT/'native/reader.c','-L'+str(prefix/'lib'),'-lmupdf','-o',WORK/'bpdf-render.exe')
     copy_binary(WORK/'bpdf-render.exe')
+    run(bin/'gcc.exe','-O2','-s','-municode','-I'+str(prefix/'include'),ROOT/'native/print-windows.c','-L'+str(prefix/'lib'),'-lmupdf','-lcomdlg32','-lgdi32','-o',WORK/'bpdf-print.exe')
+    copy_binary(WORK/'bpdf-print.exe')
     gs_versions=list((prefix/'share/ghostscript').glob('*'))
     gs=next(p for p in gs_versions if (p/'lib').is_dir())
     for name in ['Resource','lib','iccprofiles']:

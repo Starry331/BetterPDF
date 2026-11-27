@@ -11,7 +11,7 @@ impl Engine {
  pub fn tool(&self,name:&str)->Result<PathBuf,String>{
   let exe=if cfg!(windows){format!("{name}.exe")}else{name.to_string()};
   let mut candidates=vec![self.resources.join("runtime/bin").join(&exe)];
-  if name=="soffice"{candidates.insert(0,if cfg!(target_os="macos"){self.resources.join("runtime/office/Contents/MacOS/soffice")}else{self.resources.join("runtime/office/program/soffice.exe")});}
+  if name=="soffice"{candidates.insert(0,if cfg!(target_os="macos"){self.resources.join("runtime/office/Contents/MacOS/soffice")}else{self.resources.join("runtime/office/program/soffice.com")});}
   candidates.into_iter().find(|p|p.is_file()).ok_or_else(||format!("Missing bundled component: {name}. Run npm run prepare:runtime before building."))
  }
  pub fn command(&self,name:&str,read:&[&Path],write:&[&Path])->Result<Command,String>{
