@@ -1,0 +1,7 @@
+# Keep checksum-pinned license/source bytes identical on Windows and macOS.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.pdf binary
+*.zip binary

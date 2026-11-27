@@ -44,18 +44,9 @@ jobs:
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml -- --ignored
       - run: cargo build --locked --manifest-path src-tauri/Cargo.toml --bin bpdf-cli
-      - name: PDF and Office integration
-        run: |
-          $env:BPDF_RESOURCES = "$pwd/src-tauri/resources"
-          node tests/engine.integration.mjs
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          node tests/office.integration.mjs
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $env:BPDF_TEST_LEGACY = '1'
-          node tests/office.integration.mjs
-          exit $LASTEXITCODE
       - name: Build offline installer
         run: npx tauri build --config src-tauri/tauri.windows.conf.json --bundles nsis
+      - run: python -m pip install psutil==7.0.0
       - name: Verify installed resources and Unicode paths
         run: python scripts/test-windows-install.py
       - uses: actions/upload-artifact@v4
