@@ -40,6 +40,7 @@ impl Engine {
   }
   cmd.env_remove("BPDF_SCOPE_READ").env_remove("BPDF_SCOPE_WRITE").env("TEMP",private_temp.path()).env("TMP",private_temp.path()).env("TMPDIR",private_temp.path()).env("XDG_CACHE_HOME",private_temp.path());
   cmd.stdin(Stdio::null()).stdout(out.reopen().map_err(|e|e.to_string())?).stderr(err.reopen().map_err(|e|e.to_string())?);
+  #[cfg(windows)] {use std::os::windows::process::CommandExt;cmd.creation_flags(0x08000004);}
   let mut child=cmd.spawn().map_err(|e|e.to_string())?;
   #[cfg(windows)]
   let _job=match windows_job::Job::attach(&child){Ok(job)=>job,Err(error)=>{let _=child.kill();let _=child.wait();return Err(error)}};
@@ -146,7 +147,7 @@ mod isolation_tests {
 #[cfg(windows)]
 mod windows_job {
  use std::{mem::size_of,os::windows::io::AsRawHandle,process::Child};
- use windows_sys::Win32::{Foundation::{CloseHandle,HANDLE},System::JobObjects::*};
+ use windows_sys::Win32::{Foundation::{CloseHandle,HANDLE,INVALID_HANDLE_VALUE},System::{JobObjects::*,Diagnostics::ToolHelp::*,Threading::{OpenThread,ResumeThread,THREAD_SUSPEND_RESUME}}};
  pub struct Job(HANDLE);
  impl Job {
   pub fn attach(child:&Child)->Result<Self,String>{unsafe{
@@ -156,9 +157,39 @@ mod windows_job {
    limits.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE|JOB_OBJECT_LIMIT_JOB_MEMORY;
    limits.JobMemoryLimit=1536*1024*1024;
    if SetInformationJobObject(handle,JobObjectExtendedLimitInformation,&limits as *const _ as *const _,size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32)==0||AssignProcessToJobObject(handle,child.as_raw_handle() as HANDLE)==0{return Err(std::io::Error::last_os_error().to_string())}
+   // The child starts suspended so it cannot launch descendants before being
+   // assigned to the job. Resume its initial thread only after containment.
+   let snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD,0);
+   if snapshot==INVALID_HANDLE_VALUE{return Err(std::io::Error::last_os_error().to_string())}
+   let mut entry:THREADENTRY32=std::mem::zeroed();entry.dwSize=size_of::<THREADENTRY32>() as u32;
+   let mut found=false;let mut more=Thread32First(snapshot,&mut entry);
+   while more!=0{
+    if entry.th32OwnerProcessID==child.id(){
+     let thread=OpenThread(THREAD_SUSPEND_RESUME,0,entry.th32ThreadID);
+     if !thread.is_null(){found=ResumeThread(thread)!=u32::MAX;CloseHandle(thread);}
+     break;
+    }
+    more=Thread32Next(snapshot,&mut entry);
+   }
+   CloseHandle(snapshot);
+   if !found{return Err("Could not resume contained worker".into())}
    Ok(job)
   }}
   pub fn terminate(&self){unsafe{TerminateJobObject(self.0,1);}}
  }
  impl Drop for Job{fn drop(&mut self){unsafe{CloseHandle(self.0);}}}
+}
+
+#[cfg(all(test,windows))]
+mod windows_process_tests {
+ use super::*;
+ #[test]
+ fn cancellation_and_crash_leave_the_engine_usable(){
+  let engine=Engine{resources:PathBuf::new()};let signal=fresh_cancel();let cancel=signal.clone();
+  let thread=thread::spawn(move||{thread::sleep(Duration::from_millis(150));signal.store(true,Ordering::Relaxed);});
+  let mut sleeping=Command::new("powershell.exe");sleeping.args(["-NoProfile","-NonInteractive","-Command","Start-Sleep -Seconds 30"]);
+  let start=Instant::now();assert_eq!(engine.execute(sleeping,&cancel,60).unwrap_err(),"CANCELLED");assert!(start.elapsed()<Duration::from_secs(5));thread.join().unwrap();
+  let mut failed=Command::new("cmd.exe");failed.args(["/D","/C","exit 17"]);assert!(engine.execute(failed,&fresh_cancel(),10).is_err());
+  let mut healthy=Command::new("cmd.exe");healthy.args(["/D","/C","echo ready"]);assert_eq!(engine.execute(healthy,&fresh_cancel(),10).unwrap().trim(),"ready");
+ }
 }
