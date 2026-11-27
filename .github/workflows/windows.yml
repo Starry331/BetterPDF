@@ -24,8 +24,14 @@ jobs:
         with:
           path: work/windows/LibreOffice.msi
           key: libreoffice-windows-26.8.3-0e6918c2
+      - uses: actions/cache@v4
+        id: runtime
+        with:
+          path: src-tauri/resources/runtime
+          key: windows-runtime-${{ hashFiles('scripts/prepare-windows.py', 'scripts/prepare_ocr_models.py', 'scripts/ocr-models.json', 'scripts/native-sources.json', 'scripts/runtime-manifest.py', 'native/*.c') }}
       - uses: msys2/setup-msys2@v2
         id: msys2
+        if: steps.runtime.outputs.cache-hit != 'true'
         with:
           msystem: UCRT64
           update: true
@@ -37,7 +43,13 @@ jobs:
             mingw-w64-ucrt-x86_64-ghostscript
             mingw-w64-ucrt-x86_64-tesseract-ocr
       - name: Assemble offline runtime
+        if: steps.runtime.outputs.cache-hit != 'true'
         run: python scripts/prepare-windows.py --msys '${{ steps.msys2.outputs.msys2-location }}'
+      - uses: actions/cache/save@v4
+        if: steps.runtime.outputs.cache-hit != 'true'
+        with:
+          path: src-tauri/resources/runtime
+          key: windows-runtime-${{ hashFiles('scripts/prepare-windows.py', 'scripts/prepare_ocr_models.py', 'scripts/ocr-models.json', 'scripts/native-sources.json', 'scripts/runtime-manifest.py', 'native/*.c') }}
       - run: npm ci
       - run: npm run check
       - run: npm run test:ui
